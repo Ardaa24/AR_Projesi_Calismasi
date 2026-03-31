@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hastane AR Navigasyon - Hedef Seçimi</title>
+    <script src="config.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #FFFFFF;
+            --btn-bg: #2196F3;
+            --btn-hover: #1976D2;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { font-size: 2rem; text-align: center; margin-bottom: 10px; }
+        p.desc { font-size: 1.2rem; text-align: center; margin-bottom: 30px; color: #B0BEC5; }
+        
+        .dest-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+        }
+        button.dest-btn {
+            background-color: var(--btn-bg);
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button.dest-btn:hover, button.dest-btn:focus {
+            background-color: var(--btn-hover);
+            transform: scale(1.02);
+            outline: 4px solid #FFEB3B; /* A11y için odak çerçevesi */
+        }
+        .icon { margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Nereye Gitmek İstiyorsunuz?</h1>
+    <p class="desc">Lütfen hedefinizi seçin, ardından duvardaki en yakın yönlendirme kodunu okutun.</p>
+
+    <div class="dest-grid" role="group" aria-label="Varış Noktaları">
+        <button class="dest-btn" onclick="startNavigation('noroloji')" aria-label="Nöroloji Birimi">
+            <span class="icon">🧠</span> Nöroloji
+        </button>
+        <button class="dest-btn" onclick="startNavigation('engelli_tuvaleti')" aria-label="Engelli Tuvaleti">
+            <span class="icon">♿</span> Engelli Tuvaleti
+        </button>
+        <button class="dest-btn" onclick="startNavigation('laboratuvar')" aria-label="Laboratuvar (Farklı Kat)">
+            <span class="icon">🔬</span> Laboratuvar
+        </button>
+        <button class="dest-btn" onclick="startNavigation('danisma')" aria-label="Danışma Noktası">
+            <span class="icon">ℹ️</span> Danışma
+        </button>
+    </div>
+
+    <script>
+        function startNavigation(destinationId) {
+            // Hedefi config.js'deki yapıya kaydet
+            NavigationState.setDestination(destinationId);
+            
+            // Kullanıcı hedefini seçtikten sonra, bulunduğu yerdeki ilk durağı okutmak üzere AR sahnesine yönlendir.
+            // Gerçek senaryoda QR kod okutulduğunda durak1.html açılır. Test için direkt yönlendiriyoruz.
+            window.location.href = "durak1.html"; 
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db
+
+# Editör klasörleri 
+.vscode/
+.idea/
+
+# Eğer ileride Node.js eklemeyi düşünürsem
+node_modules/

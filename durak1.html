@@ -75,11 +75,13 @@
     </div>
 
     <a-scene 
-        webxr="optionalFeatures: dom-overlay; overlayElement: #overlay-container;"
+        webxr="referenceSpaceType: local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay-container;"
         color-space="sRGB" 
         renderer="colorManagement: true, physicallyCorrectLights"
         vr-mode-ui="enabled: false"> 
         
+        <a-camera position="0 1.6 0"></a-camera>
+
         <a-entity id="route-container"></a-entity>
     </a-scene>
 

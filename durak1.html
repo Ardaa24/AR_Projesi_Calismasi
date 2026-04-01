@@ -11,23 +11,17 @@
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; }
         
-        /* --- WebXR DOM Overlay (AR İçinde Görünecek UI) --- */
-        #overlay-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* UI arkasındaki AR evrenine tıklanabilsin diye */
-            z-index: 1000;
-        }
-
+        #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
+        
         #top-navbar {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(10px); color: white; padding: 15px 20px;
             border-radius: 20px; text-align: center; font-size: 1.2rem; font-weight: bold;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-bottom: 3px solid #00FF00;
-            display: none; /* Başlangıçta gizli, AR moduna girince açılacak */
+            display: none; 
         }
 
-        /* --- AR'ye Girmeden Önceki Karşılama Ekranı --- */
         #intro-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-color: #121212; color: white; display: flex; flex-direction: column;
@@ -43,9 +37,24 @@
         h2 { margin-top: 0; color: #3498db; }
         p { font-size: 1.1rem; line-height: 1.5; }
         
-        /* A-Frame'in kendi AR butonunu belirginleştirmek için bir uyarı */
-        .ar-hint { color: #00FF00; font-weight: bold; font-size: 1.2rem; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1.02); } 100% { opacity: 0.5; transform: scale(0.98); } }
+        /* EKSİK OLAN BUTONUN TASARIMI */
+        #my-custom-button {
+            background-color: #00FF00;
+            color: #000;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
+            transition: transform 0.2s;
+            margin-top: 15px;
+            display: none; /* WebXR desteği doğrulanana kadar gizli */
+        }
+        #my-custom-button:active { transform: scale(0.95); }
+
+        #error-msg { color: #ff5252; font-weight: bold; margin-top: 15px; display: none; }
     </style>
 </head>
 <body>
@@ -53,9 +62,12 @@
     <div id="intro-screen">
         <div class="instruction-box">
             <h2>📍 Başlangıç Noktası</h2>
-            <p>1. Lütfen sırtınızı karekodu okuttuğunuz afişe verin.</p>
-            <p>2. Telefonunuzu gideceğiniz koridora doğru düz bir şekilde tutun.</p>
-            <p class="ar-hint">Hazır olduğunuzda sağ alttaki "AR" butonuna basın! ↘️</p>
+            <p>1. Sırtınızı karekodu okuttuğunuz afişe verin.</p>
+            <p>2. Telefonunuzu gideceğiniz koridora doğru düz tutun.</p>
+            
+            <button id="my-custom-button">Göz Kamerayı Aç (AR Başlat)</button>
+            
+            <p id="error-msg">Cihazınız veya tarayıcınız WebXR desteklemiyor. Lütfen Android bir cihazda Chrome kullanın.</p>
         </div>
     </div>
 
@@ -69,7 +81,9 @@
         webxr="optionalFeatures: dom-overlay; overlayElement: #overlay-container;"
         color-space="sRGB" 
         renderer="colorManagement: true, physicallyCorrectLights"
-        vr-mode-ui="enterVRButton: #my-custom-button; enterARButton: #my-custom-button"> <a-entity id="route-container"></a-entity>
+        vr-mode-ui="enterARButton: #my-custom-button; enterVRButton: none;"> 
+        
+        <a-entity id="route-container"></a-entity>
     </a-scene>
 
     <script>
@@ -80,6 +94,8 @@
             const navInstruction = document.getElementById("nav-instruction");
             const routeContainer = document.getElementById("route-container");
             const sceneEl = document.querySelector('a-scene');
+            const arButton = document.getElementById("my-custom-button");
+            const errorMsg = document.getElementById("error-msg");
 
             if (!targetDestId) return window.location.href = "index.html";
 
@@ -89,22 +105,30 @@
                 return;
             }
 
-            // --- 1. Rota Oklarını Çizme (WebXR Mantığı) ---
-            
-           
+            // WebXR Desteği Kontrolü (Butonu sadece destekliyorsa gösterir)
+            if (navigator.xr) {
+                navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                    if (supported) {
+                        arButton.style.display = "inline-block";
+                    } else {
+                        errorMsg.style.display = "block";
+                    }
+                });
+            } else {
+                errorMsg.style.display = "block";
+            }
+
+            // Rota Oklarını Çizme
             routeData.path.forEach((point, index) => {
                 const arrowEl = document.createElement('a-cone');
                 arrowEl.setAttribute('radius-bottom', '0.4');
                 arrowEl.setAttribute('radius-top', '0');
                 arrowEl.setAttribute('height', '1.2');
                 arrowEl.setAttribute('color', routeData.color);
-                
-                // WebXR'da zemin genellikle y=0 veya kameranın boyuna göre y=-1.5'tir.
                 arrowEl.setAttribute('position', point.pos);
                 arrowEl.setAttribute('rotation', point.rot);
                 arrowEl.setAttribute('segments-radial', '6'); 
                 
-              
                 arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
                 arrowEl.setAttribute('animation', `
                     property: material.opacity; from: 0.2; to: 1.0; 
@@ -115,18 +139,13 @@
                 routeContainer.appendChild(arrowEl);
             });
 
-            // --- 2. WebXR (AR Moduna) Giriş Olayı ---
-            // Kullanıcı sağ alttaki AR butonuna basıp kamerayı açtığında tetiklenir
+            // AR Moduna Girildiğinde
             sceneEl.addEventListener('enter-vr', function () {
                 if (sceneEl.is('ar-mode')) {
-                    // Karşılama ekranını gizle
                     introScreen.style.display = "none";
-                    
-                    // AR içi Overlay (Navbar) göster
                     topNavbar.style.display = "block";
                     navInstruction.innerText = routeData.instruction;
 
-                    // Sesli uyarı ver
                     if ('speechSynthesis' in window) {
                         const speech = new SpeechSynthesisUtterance(routeData.audioText);
                         speech.lang = 'tr-TR';
@@ -135,7 +154,7 @@
                 }
             });
 
-            // AR Modundan Çıkış Olayı (Kullanıcı geri tuşuna basarsa)
+            // AR Modundan Çıkıldığında
             sceneEl.addEventListener('exit-vr', function () {
                 introScreen.style.display = "flex";
                 topNavbar.style.display = "none";

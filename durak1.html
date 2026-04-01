@@ -12,7 +12,6 @@
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
         
-        /* A11y Yüksek Kontrastlı Bilgi Paneli */
         #ui-panel {
             position: absolute;
             top: 20px;
@@ -24,7 +23,7 @@
             color: #FFFFFF;
             padding: 15px;
             border-radius: 12px;
-            border: 3px solid #FF0000; /* Hedef bulunana kadar kırmızı */
+            border: 3px solid #FF0000;
             text-align: center;
             font-size: 1.5rem;
             font-weight: bold;
@@ -33,12 +32,8 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
-        /* Hedef Bulunduğunda UI Yeşile Dönecek */
-        #ui-panel.found {
-            border-color: #00FF00;
-        }
+        #ui-panel.found { border-color: #00FF00; }
 
-        /* Yükleme ve İzin Hata Ekranı */
         #loading-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -57,6 +52,61 @@
             animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- YENİ: Tarama (Scanner) Efekti CSS --- */
+        #scanner-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Tıklamaları engellememesi için */
+            z-index: 500; /* Kameranın üstünde, UI panelin altında */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Ekranın geri kalanını hafif karartarak odağı ortaya çeker */
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%);
+        }
+        
+        .scanner-box {
+            width: 70vw; height: 70vw; max-width: 300px; max-height: 300px;
+            border: 3px solid rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .scanner-line {
+            width: 100%; height: 4px;
+            background: #00FF00;
+            box-shadow: 0 0 15px 2px #00FF00;
+            position: absolute;
+            top: 0; left: 0;
+            animation: scanAnim 2s linear infinite;
+        }
+
+        @keyframes scanAnim {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Hedef bulunduğunda kutu yeşil olur, çizgi kaybolur */
+        .scanner-box.found {
+            border-color: #00FF00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            background-color: rgba(0, 255, 0, 0.1); /* Hafif yeşil dolgu */
+        }
+        .scanner-box.found .scanner-line {
+            display: none;
+            animation: none;
+        }
+
+        #mirror-toggle-btn {
+            position: absolute; bottom: 20px; right: 20px; z-index: 3000;
+            padding: 12px 18px; background-color: #3498db; color: white;
+            border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -70,34 +120,52 @@
         Lütfen kamerayı duvardaki yönlendirme afişine (hedefe) doğrultun.
     </div>
 
-    <a-scene 
-        mindar-image="imageTargetSrc: ./assets/targets.mind; filterMinCF: 0.0001; filterBeta: 0.001;" 
-        color-space="sRGB" 
-        renderer="colorManagement: true, physicallyCorrectLights" 
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false">
-        
+    <div id="scanner-container">
+        <div class="scanner-box" id="scanner-box">
+            <div class="scanner-line"></div>
+        </div>
+    </div>
+
+    <button id="mirror-toggle-btn" onclick="toggleMirror()">🔄 Aynayı Çevir</button>
+
+   <a-scene 
+    mindar-image="imageTargetSrc: ./assets/targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; uiScanning: no;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, physicallyCorrectLights" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+    
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
-            </a-entity>
+        <a-entity id="ar-target" mindar-image-target="targetIndex: 0"></a-entity>
     </a-scene>
 
     <script>
+        let isMirrored = false; 
+        function toggleMirror() {
+            const videoObj = document.querySelector('video');
+            const aframeCanvas = document.querySelector('.a-canvas');
+            if (videoObj && aframeCanvas) {
+                isMirrored = !isMirrored;
+                const scaleValue = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                videoObj.style.setProperty('transform', scaleValue, 'important');
+                aframeCanvas.style.setProperty('transform', scaleValue, 'important');
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             const currentStopId = "durak1";
             const targetDestId = NavigationState.getDestination();
             const uiPanel = document.getElementById("ui-panel");
             const loadingScreen = document.getElementById("loading-screen");
             const arTarget = document.getElementById("ar-target");
+            const scannerBox = document.getElementById("scanner-box"); // YENİ
 
-            // Eğer hedef seçilmemişse ana ekrana geri yolla
             if (!targetDestId) {
                 window.location.href = "index.html";
                 return;
             }
 
-            // config.js'den geçerli durağın rota bilgilerini çek
             const routeData = NavConfig[currentStopId].destinations[targetDestId];
 
             if (!routeData) {
@@ -105,45 +173,36 @@
                 return;
             }
 
-            // --- 1. Dinamik AR Okunu Yarat ve Sahneye Ekle ---
-            // Model yükleme hatalarından kaçınmak için MVP'de A-Frame primitive (koni) kullanıyoruz.
-            // Asıl projede <a-image src="./assets/arrow.png"> veya <a-gltf-model> kullanabilirsin.
             const arrowEl = document.createElement('a-cone');
             arrowEl.setAttribute('radius-bottom', '0.5');
             arrowEl.setAttribute('radius-top', '0');
             arrowEl.setAttribute('height', '1.5');
             arrowEl.setAttribute('color', routeData.arrow.color);
-            // config.js'den gelen konum ve rotasyon değerlerini ata (Yer düzlemine y=-1.5 hizala)
             arrowEl.setAttribute('position', routeData.arrow.position);
             arrowEl.setAttribute('rotation', routeData.arrow.rotation);
-          
             arrowEl.setAttribute('material', 'opacity: 0.8; transparent: true;');
             
             arTarget.appendChild(arrowEl);
 
-            // ---  Kamera İzin ve Yükleme Hata Yönetimi ---
             const sceneEl = document.querySelector('a-scene');
             sceneEl.addEventListener('arReady', () => {
-                loadingScreen.style.display = "none"; // Sistem hazır, yükleme ekranını gizle
+                loadingScreen.style.display = "none";
             });
             sceneEl.addEventListener('arError', () => {
                 document.getElementById("loading-text").innerText = "Kamera başlatılamadı. Lütfen tarayıcı izinlerini kontrol edin.";
                 document.querySelector(".spinner").style.display = "none";
             });
 
-            // ---  Mind-AR Hedef Bulundu / Kaybedildi Olayları (Event Listeners) ---
-            let hasSpoken = false; // Sesi sadece ilk bulunduğunda çalmak için flag
-
+            let hasSpoken = false; 
             arTarget.addEventListener("targetFound", event => {
-                // A11y: Görsel Uyarı
                 uiPanel.classList.add("found");
                 uiPanel.innerText = routeData.text;
+                scannerBox.classList.add("found"); // YENİ: Tarama kutusunu yeşil yap ve çizgiyi durdur
 
-                // A11y: İşitsel Uyarı (Text-to-Speech)
                 if (!hasSpoken && 'speechSynthesis' in window) {
                     const speech = new SpeechSynthesisUtterance(routeData.audioText);
                     speech.lang = 'tr-TR';
-                    speech.rate = 0.9; // Engelli bireyler için anlaşılırlığı artırmak adına biraz yavaşlatıldı
+                    speech.rate = 0.9; 
                     window.speechSynthesis.speak(speech);
                     hasSpoken = true;
                 }
@@ -152,6 +211,7 @@
             arTarget.addEventListener("targetLost", event => {
                 uiPanel.classList.remove("found");
                 uiPanel.innerText = "Hedef kaybedildi. Kamerayı afişe tekrar doğrultun.";
+                scannerBox.classList.remove("found"); // YENİ: Taramayı tekrar başlat
             });
         });
     </script>

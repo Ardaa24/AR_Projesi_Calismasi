@@ -10,115 +10,83 @@
     <script src="config.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        #ui-panel {
+        /* --- Üst Navigasyon Barı --- */
+        #top-navbar {
             position: absolute;
-            top: 20px;
+            top: -100px; /* Başlangıçta gizli (yukarıda) */
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
-            max-width: 500px;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: #FFFFFF;
-            padding: 15px;
-            border-radius: 12px;
-            border: 3px solid #FF0000;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            z-index: 1000;
-            transition: border-color 0.3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-        
-        #ui-panel.found { border-color: #00FF00; }
-
-        #loading-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #121212;
+            max-width: 400px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
             color: white;
+            padding: 15px 20px;
+            border-radius: 20px;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            z-index: 2000;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-bottom: 3px solid #00FF00;
+            z-index: 1500;
+            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
             font-size: 1.2rem;
+            font-weight: bold;
         }
-        .spinner {
-            border: 6px solid #f3f3f3; border-top: 6px solid #3498db;
-            border-radius: 50%; width: 50px; height: 50px;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+
+        #top-navbar.visible {
+            top: 20px; /* Hedef bulununca aşağı kayarak gelir */
         }
+
+        /* Yönlendirme Paneli (Ortadaki Kırmızı Uyarı) */
+        #ui-panel {
+            position: absolute;
+            bottom: 80px; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #FF0000;
+            text-align: center;
+            font-size: 1rem;
+            z-index: 1000;
+            transition: opacity 0.3s;
+        }
+        #ui-panel.found { opacity: 0; pointer-events: none; } /* Hedef bulununca gizlenir */
+
+        /* Yükleme ve Tarayıcı (Scanner) Efektleri */
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- YENİ: Tarama (Scanner) Efekti CSS --- */
-        #scanner-container {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Tıklamaları engellememesi için */
-            z-index: 500; /* Kameranın üstünde, UI panelin altında */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* Ekranın geri kalanını hafif karartarak odağı ortaya çeker */
-            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%);
-        }
-        
-        .scanner-box {
-            width: 70vw; height: 70vw; max-width: 300px; max-height: 300px;
-            border: 3px solid rgba(255, 255, 255, 0.7);
-            border-radius: 15px;
-            position: relative;
-            overflow: hidden;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
+        #scanner-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 500; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%); }
+        .scanner-box { width: 70vw; height: 70vw; max-width: 300px; max-height: 300px; border: 3px solid rgba(255, 255, 255, 0.7); border-radius: 15px; position: relative; overflow: hidden; }
+        .scanner-line { width: 100%; height: 4px; background: #00FF00; box-shadow: 0 0 15px 2px #00FF00; position: absolute; top: 0; left: 0; animation: scanAnim 2s linear infinite; }
+        @keyframes scanAnim { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        .scanner-box.found { border-color: #00FF00; box-shadow: 0 0 20px rgba(0, 255, 0, 0.5); background-color: rgba(0, 255, 0, 0.1); }
+        .scanner-box.found .scanner-line { display: none; animation: none; }
 
-        .scanner-line {
-            width: 100%; height: 4px;
-            background: #00FF00;
-            box-shadow: 0 0 15px 2px #00FF00;
-            position: absolute;
-            top: 0; left: 0;
-            animation: scanAnim 2s linear infinite;
-        }
-
-        @keyframes scanAnim {
-            0% { top: 0; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-
-        /* Hedef bulunduğunda kutu yeşil olur, çizgi kaybolur */
-        .scanner-box.found {
-            border-color: #00FF00;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-            background-color: rgba(0, 255, 0, 0.1); /* Hafif yeşil dolgu */
-        }
-        .scanner-box.found .scanner-line {
-            display: none;
-            animation: none;
-        }
-
-        #mirror-toggle-btn {
-            position: absolute; bottom: 20px; right: 20px; z-index: 3000;
-            padding: 12px 18px; background-color: #3498db; color: white;
-            border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;
-        }
+        #mirror-toggle-btn { position: absolute; bottom: 20px; right: 20px; z-index: 3000; padding: 10px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="loading-screen">
         <div class="spinner"></div>
-        <p id="loading-text">Kamera başlatılıyor. Lütfen izin veriniz...</p>
+        <p id="loading-text">Kamera başlatılıyor...</p>
     </div>
 
-    <div id="ui-panel" role="alert" aria-live="assertive">
-        Lütfen kamerayı duvardaki yönlendirme afişine (hedefe) doğrultun.
+    <div id="top-navbar" role="status" aria-live="polite">
+        <span id="nav-instruction">Talimat bekleniyor...</span>
     </div>
+
+    <div id="ui-panel">Lütfen kamerayı yönlendirme afişine doğrultun.</div>
 
     <div id="scanner-container">
         <div class="scanner-box" id="scanner-box">
@@ -126,14 +94,12 @@
         </div>
     </div>
 
-    <button id="mirror-toggle-btn" onclick="toggleMirror()">🔄 Aynayı Çevir</button>
+    <button id="mirror-toggle-btn" onclick="toggleMirror()">🔄 Ayna</button>
 
-   <a-scene 
-    mindar-image="imageTargetSrc: ./assets/targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; uiScanning: no;" 
-    color-space="sRGB" 
-    renderer="colorManagement: true, physicallyCorrectLights" 
-    vr-mode-ui="enabled: false" 
-    device-orientation-permission-ui="enabled: false">
+    <a-scene 
+        mindar-image="imageTargetSrc: ./assets/targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; uiScanning: no;" 
+        color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
+        vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
     
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
@@ -154,50 +120,59 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            const currentStopId = "durak1";
             const targetDestId = NavigationState.getDestination();
             const uiPanel = document.getElementById("ui-panel");
-            const loadingScreen = document.getElementById("loading-screen");
+            const topNavbar = document.getElementById("top-navbar");
+            const navInstruction = document.getElementById("nav-instruction");
             const arTarget = document.getElementById("ar-target");
-            const scannerBox = document.getElementById("scanner-box"); // YENİ
+            const scannerBox = document.getElementById("scanner-box");
 
-            if (!targetDestId) {
-                window.location.href = "index.html";
-                return;
-            }
+            if (!targetDestId) return window.location.href = "index.html";
 
-            const routeData = NavConfig[currentStopId].destinations[targetDestId];
+            const routeData = NavConfig["durak1"].destinations[targetDestId];
+            if (!routeData) return uiPanel.innerText = "Rota bulunamadı.";
 
-            if (!routeData) {
-                uiPanel.innerText = "Hata: Bu duraktan seçilen hedefe rota bulunamadı.";
-                return;
-            }
+            // --- VİDEODAKİ GİBİ ROTA (TRAIL) OLUŞTURMA MANTIĞI ---
+            routeData.path.forEach((point, index) => {
+                const arrowEl = document.createElement('a-cone');
+                arrowEl.setAttribute('radius-bottom', '0.4');
+                arrowEl.setAttribute('radius-top', '0');
+                arrowEl.setAttribute('height', '1.2');
+                arrowEl.setAttribute('color', routeData.color);
+                arrowEl.setAttribute('position', point.pos);
+                arrowEl.setAttribute('rotation', point.rot);
+                
+                // Başlangıçta saydamlığı düşük
+                arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
 
-            const arrowEl = document.createElement('a-cone');
-            arrowEl.setAttribute('radius-bottom', '0.5');
-            arrowEl.setAttribute('radius-top', '0');
-            arrowEl.setAttribute('height', '1.5');
-            arrowEl.setAttribute('color', routeData.arrow.color);
-            arrowEl.setAttribute('position', routeData.arrow.position);
-            arrowEl.setAttribute('rotation', routeData.arrow.rotation);
-            arrowEl.setAttribute('material', 'opacity: 0.8; transparent: true;');
-            
-            arTarget.appendChild(arrowEl);
-
-            const sceneEl = document.querySelector('a-scene');
-            sceneEl.addEventListener('arReady', () => {
-                loadingScreen.style.display = "none";
+                // 
+                // delay değeri index ile çarpıldığı için animasyon arkadan öne doğru dalgalanır
+                arrowEl.setAttribute('animation', `
+                    property: material.opacity; 
+                    from: 0.2; 
+                    to: 1.0; 
+                    dir: alternate; 
+                    dur: 600; 
+                    loop: true; 
+                    delay: ${index * 200}; 
+                    easing: easeInOutSine;
+                `);
+                
+                arTarget.appendChild(arrowEl);
             });
-            sceneEl.addEventListener('arError', () => {
-                document.getElementById("loading-text").innerText = "Kamera başlatılamadı. Lütfen tarayıcı izinlerini kontrol edin.";
-                document.querySelector(".spinner").style.display = "none";
+
+            document.querySelector('a-scene').addEventListener('arReady', () => {
+                document.getElementById("loading-screen").style.display = "none";
             });
 
             let hasSpoken = false; 
-            arTarget.addEventListener("targetFound", event => {
+            arTarget.addEventListener("targetFound", () => {
+                // Kamera hedefi bulduğunda alttaki kırmızı uyarıyı gizle, üstteki şık barı indir
                 uiPanel.classList.add("found");
-                uiPanel.innerText = routeData.text;
-                scannerBox.classList.add("found"); // YENİ: Tarama kutusunu yeşil yap ve çizgiyi durdur
+                scannerBox.classList.add("found");
+                
+                topNavbar.classList.add("visible");
+                navInstruction.innerText = routeData.instruction;
 
                 if (!hasSpoken && 'speechSynthesis' in window) {
                     const speech = new SpeechSynthesisUtterance(routeData.audioText);
@@ -208,10 +183,11 @@
                 }
             });
 
-            arTarget.addEventListener("targetLost", event => {
+            arTarget.addEventListener("targetLost", () => {
+                // Hedef kaybedildiğinde üstteki barı gizle, kırmızı uyarıyı geri getir
                 uiPanel.classList.remove("found");
-                uiPanel.innerText = "Hedef kaybedildi. Kamerayı afişe tekrar doğrultun.";
-                scannerBox.classList.remove("found"); // YENİ: Taramayı tekrar başlat
+                scannerBox.classList.remove("found");
+                topNavbar.classList.remove("visible");
             });
         });
     </script>

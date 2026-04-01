@@ -1,25 +1,20 @@
-// config.js
 const NavConfig = {
     "durak1": {
         locationName: "Ana Giriş",
         destinations: {
             "noroloji": {
-                // Üst navbar'da yazacak kısa ve net yönlendirme
                 instruction: "15 Metre İleri, Sonra Sağdaki Koridora Dönünüz ⤴️",
                 audioText: "15 Metre ileri gidip, sağdaki koridora dönünüz.",
-                color: "#00FF00", 
-                // Yere çizilecek okların sırasıyla koordinatları (x, y, z)
-                // z ekseninde negatif değerler afişten ileriye doğru gelir.
+                color: "#00FF00",
                 path: [
-                    { pos: "0 -1.5 -1", rot: "-90 0 0" },    // 1. Ok (1 metre ileride)
-                    { pos: "0 -1.5 -2.5", rot: "-90 0 0" },  // 2. Ok (2.5 metre ileride)
-                    { pos: "0 -1.5 -4", rot: "-90 0 0" },    // 3. Ok (4 metre ileride)
-                    { pos: "0 -1.5 -5.5", rot: "-90 0 0" },  // 4. Ok (5.5 metre ileride)
-                    // Dönüş efekti vermek için sağa doğru x'i artırıp, rotasyonu -45 yapıyoruz
-                    { pos: "1 -1.5 -6.5", rot: "-90 -45 0" }, // 5. Ok (Hafif sağa dönük)
-                    { pos: "2 -1.5 -7", rot: "-90 -90 0" }    // 6. Ok (Tam sağa dönük)
+                    { pos: "0 -1.5 -1", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -2.5", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -4", rot: "-90 0 0" },
+                    { pos: "1 -1.5 -5", rot: "-90 -45 0" }
                 ],
-                nextStop: "durak2.html"
+                // YENİ: targets.mind dosyasına eklenecek 2. görselin indexi (Nöroloji kapısındaki görsel)
+                arrivalIndex: 1, 
+                nextStop: "index.html" 
             }
         }
     }

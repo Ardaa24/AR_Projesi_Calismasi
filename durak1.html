@@ -23,7 +23,7 @@
         }
 
         #intro-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: #121212; color: white; display: flex; flex-direction: column;
             justify-content: center; align-items: center; text-align: center; padding: 20px;
             z-index: 2000; box-sizing: border-box;
@@ -37,8 +37,9 @@
         h2 { margin-top: 0; color: #3498db; }
         p { font-size: 1.1rem; line-height: 1.5; }
         
-        /* EKSİK OLAN BUTONUN TASARIMI */
+        /* BUTON ARTIK HER ZAMAN GÖRÜNÜR */
         #my-custom-button {
+            display: block; 
             background-color: #00FF00;
             color: #000;
             font-size: 1.5rem;
@@ -50,11 +51,9 @@
             box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
             transition: transform 0.2s;
             margin-top: 15px;
-            display: none; /* WebXR desteği doğrulanana kadar gizli */
+            width: 100%;
         }
         #my-custom-button:active { transform: scale(0.95); }
-
-        #error-msg { color: #ff5252; font-weight: bold; margin-top: 15px; display: none; }
     </style>
 </head>
 <body>
@@ -65,9 +64,7 @@
             <p>1. Sırtınızı karekodu okuttuğunuz afişe verin.</p>
             <p>2. Telefonunuzu gideceğiniz koridora doğru düz tutun.</p>
             
-            <button id="my-custom-button">Göz Kamerayı Aç (AR Başlat)</button>
-            
-            <p id="error-msg">Cihazınız veya tarayıcınız WebXR desteklemiyor. Lütfen Android bir cihazda Chrome kullanın.</p>
+            <button id="my-custom-button">🚀 AR'yi Başlat</button>
         </div>
     </div>
 
@@ -81,7 +78,7 @@
         webxr="optionalFeatures: dom-overlay; overlayElement: #overlay-container;"
         color-space="sRGB" 
         renderer="colorManagement: true, physicallyCorrectLights"
-        vr-mode-ui="enterARButton: #my-custom-button; enterVRButton: none;"> 
+        vr-mode-ui="enabled: false"> 
         
         <a-entity id="route-container"></a-entity>
     </a-scene>
@@ -95,7 +92,6 @@
             const routeContainer = document.getElementById("route-container");
             const sceneEl = document.querySelector('a-scene');
             const arButton = document.getElementById("my-custom-button");
-            const errorMsg = document.getElementById("error-msg");
 
             if (!targetDestId) return window.location.href = "index.html";
 
@@ -105,20 +101,7 @@
                 return;
             }
 
-            // WebXR Desteği Kontrolü (Butonu sadece destekliyorsa gösterir)
-            if (navigator.xr) {
-                navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-                    if (supported) {
-                        arButton.style.display = "inline-block";
-                    } else {
-                        errorMsg.style.display = "block";
-                    }
-                });
-            } else {
-                errorMsg.style.display = "block";
-            }
-
-            // Rota Oklarını Çizme
+            // Rota Oklarını Sahneye Ekleme
             routeData.path.forEach((point, index) => {
                 const arrowEl = document.createElement('a-cone');
                 arrowEl.setAttribute('radius-bottom', '0.4');
@@ -139,7 +122,27 @@
                 routeContainer.appendChild(arrowEl);
             });
 
-            // AR Moduna Girildiğinde
+            // --- MANUEL AR TETİKLEYİCİ ---
+            
+            arButton.addEventListener('click', () => {
+                // Tarayıcı WebXR API'sini tanıyor mu? (HTTPS ve tarayıcı uyumluluğu kontrolü)
+                if (navigator.xr) {
+                    navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                        if (supported) {
+                            // Cihaz ARCore destekliyor, AR moduna gir!
+                            sceneEl.enterAR();
+                        } else {
+                            // Cihaz AR desteklemiyorsa (Örn: iPhone Safari veya çok eski Android)
+                            alert("❌ Cihazınız veya tarayıcınız WebXR (AR) desteklemiyor. Lütfen güncel bir Android cihazda Google Chrome kullanın.");
+                        }
+                    });
+                } else {
+                    // Sayfa HTTP ile açılmışsa veya tarayıcı çok eskiyse
+                    alert("❌ WebXR API bulunamadı! Sayfaya 'http://' yerine 'https://' ile (GitHub Pages linkiyle) girdiğinizden emin olun.");
+                }
+            });
+
+            // AR Moduna Başarıyla Girildiğinde Çalışacak Kodlar
             sceneEl.addEventListener('enter-vr', function () {
                 if (sceneEl.is('ar-mode')) {
                     introScreen.style.display = "none";
@@ -154,7 +157,7 @@
                 }
             });
 
-            // AR Modundan Çıkıldığında
+            // AR Modundan Çıkıldığında (Kullanıcı geri tuşuna basarsa)
             sceneEl.addEventListener('exit-vr', function () {
                 introScreen.style.display = "flex";
                 topNavbar.style.display = "none";

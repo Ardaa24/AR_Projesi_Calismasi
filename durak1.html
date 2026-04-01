@@ -103,12 +103,16 @@
                 return;
             }
 
-            // Rota Oklarını Sahneye Ekleme
+            /// Rota Oklarını Sahneye Ekleme
             routeData.path.forEach((point, index) => {
                 const arrowEl = document.createElement('a-cone');
-                arrowEl.setAttribute('radius-bottom', '0.4');
+                
+                // --- OK BOYUTLARI --
+                arrowEl.setAttribute('radius-bottom', '0.2'); // Eski değer: 0.4 idi
                 arrowEl.setAttribute('radius-top', '0');
-                arrowEl.setAttribute('height', '1.2');
+                arrowEl.setAttribute('height', '0.6');        // Eski değer: 1.2 idi
+                // -------------------------------
+                
                 arrowEl.setAttribute('color', routeData.color);
                 arrowEl.setAttribute('position', point.pos);
                 arrowEl.setAttribute('rotation', point.rot);

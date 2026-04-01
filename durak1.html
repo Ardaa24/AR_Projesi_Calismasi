@@ -1,290 +1,146 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AR Yönlendirme - Durak 1</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR Navigasyon - Durak 1</title>
+    
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <script src="config.js"></script>
 
-  <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-  <script src="config.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; }
+        
+        /* --- WebXR DOM Overlay (AR İçinde Görünecek UI) --- */
+        #overlay-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* UI arkasındaki AR evrenine tıklanabilsin diye */
+            z-index: 1000;
+        }
 
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
+        #top-navbar {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px); color: white; padding: 15px 20px;
+            border-radius: 20px; text-align: center; font-size: 1.2rem; font-weight: bold;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-bottom: 3px solid #00FF00;
+            display: none; /* Başlangıçta gizli, AR moduna girince açılacak */
+        }
 
-    #top-navbar {
-      position: absolute;
-      top: -100px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      max-width: 400px;
-      background: rgba(20, 20, 20, 0.95);
-      backdrop-filter: blur(10px);
-      color: white;
-      padding: 15px 20px;
-      border-radius: 20px;
-      text-align: center;
-      font-size: 1.2rem;
-      font-weight: bold;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      border-bottom: 3px solid #00FF00;
-      z-index: 1500;
-      transition: top 0.5s, background-color 0.5s;
-    }
+        /* --- AR'ye Girmeden Önceki Karşılama Ekranı --- */
+        #intro-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #121212; color: white; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 20px;
+            z-index: 2000; box-sizing: border-box;
+        }
 
-    #top-navbar.visible {
-      top: 20px;
-    }
+        .instruction-box {
+            background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 15px;
+            border: 2px solid #3498db; max-width: 400px; margin-bottom: 20px;
+        }
 
-    #top-navbar.success {
-      background-color: #2e7d32;
-      border-color: #fff;
-    }
-
-    /* Hedefe varış rengi */
-
-    #ui-panel {
-      position: absolute;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80%;
-      background-color: rgba(0, 0, 0, 0.8);
-      color: #fff;
-      padding: 10px;
-      border-radius: 8px;
-      border: 2px solid #FF0000;
-      text-align: center;
-      font-size: 1rem;
-      z-index: 1000;
-      transition: opacity 0.3s;
-    }
-
-    #ui-panel.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    #scanner-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 500;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
-    }
-
-    .scanner-box {
-      width: 70vw;
-      height: 70vw;
-      max-width: 300px;
-      max-height: 300px;
-      border: 3px solid rgba(255, 255, 255, 0.7);
-      border-radius: 15px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .scanner-line {
-      width: 100%;
-      height: 4px;
-      background: #00FF00;
-      box-shadow: 0 0 15px 2px #00FF00;
-      position: absolute;
-      top: 0;
-      left: 0;
-      animation: scanAnim 2s linear infinite;
-    }
-
-    @keyframes scanAnim {
-      0% {
-        top: 0;
-        opacity: 0;
-      }
-
-      10% {
-        opacity: 1;
-      }
-
-      90% {
-        opacity: 1;
-      }
-
-      100% {
-        top: 100%;
-        opacity: 0;
-      }
-    }
-
-    .scanner-box.hidden {
-      display: none;
-    }
-
-    /* Hedef bulununca tarayıcıyı tamamen gizle */
-
-    #loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #121212;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-
-    .spinner {
-      border: 6px solid #f3f3f3;
-      border-top: 6px solid #3498db;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-  </style>
+        h2 { margin-top: 0; color: #3498db; }
+        p { font-size: 1.1rem; line-height: 1.5; }
+        
+        /* A-Frame'in kendi AR butonunu belirginleştirmek için bir uyarı */
+        .ar-hint { color: #00FF00; font-weight: bold; font-size: 1.2rem; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1.02); } 100% { opacity: 0.5; transform: scale(0.98); } }
+    </style>
 </head>
-
 <body>
 
-  <div id="loading-screen">
-    <div class="spinner"></div>
-    <p id="loading-text">Kamera başlatılıyor...</p>
-  </div>
-
-  <div id="top-navbar" role="status">
-    <span id="nav-instruction">Talimat bekleniyor...</span>
-  </div>
-
-  <div id="ui-panel">Lütfen kamerayı başlangıç afişine doğrultun.</div>
-
-  <div id="scanner-container">
-    <div class="scanner-box" id="scanner-box">
-      <div class="scanner-line"></div>
+    <div id="intro-screen">
+        <div class="instruction-box">
+            <h2>📍 Başlangıç Noktası</h2>
+            <p>1. Lütfen sırtınızı karekodu okuttuğunuz afişe verin.</p>
+            <p>2. Telefonunuzu gideceğiniz koridora doğru düz bir şekilde tutun.</p>
+            <p class="ar-hint">Hazır olduğunuzda sağ alttaki "AR" butonuna basın! ↘️</p>
+        </div>
     </div>
-  </div>
 
-  <a-scene mindar-image="imageTargetSrc: ./assets/targets.mind; uiScanning: no;" color-space="sRGB"
-    renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <div id="overlay-container">
+        <div id="top-navbar" role="status">
+            <span id="nav-instruction">Talimat bekleniyor...</span>
+        </div>
+    </div>
 
-    <a-camera position="0 0 0" look-controls="enabled: false">
-      <a-cone id="hud-arrow" radius-bottom="0.1" radius-top="0" height="0.4" color="#00FF00" position="0 -0.5 -1"
-        rotation="-90 0 0" material="opacity: 0; transparent: true;">
-      </a-cone>
-    </a-camera>
+    <a-scene 
+        webxr="optionalFeatures: dom-overlay; overlayElement: #overlay-container;"
+        color-space="sRGB" 
+        renderer="colorManagement: true, physicallyCorrectLights"
+        vr-mode-ui="enterVRButton: #my-custom-button; enterARButton: #my-custom-button"> <a-entity id="route-container"></a-entity>
+    </a-scene>
 
-    <a-entity id="start-target" mindar-image-target="targetIndex: 0"></a-entity>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const targetDestId = NavigationState.getDestination();
+            const introScreen = document.getElementById("intro-screen");
+            const topNavbar = document.getElementById("top-navbar");
+            const navInstruction = document.getElementById("nav-instruction");
+            const routeContainer = document.getElementById("route-container");
+            const sceneEl = document.querySelector('a-scene');
 
-    <a-entity id="arrival-target" mindar-image-target="targetIndex: 1"></a-entity>
-  </a-scene>
+            if (!targetDestId) return window.location.href = "index.html";
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const targetDestId = NavigationState.getDestination();
-      const uiPanel = document.getElementById("ui-panel");
-      const topNavbar = document.getElementById("top-navbar");
-      const navInstruction = document.getElementById("nav-instruction");
-      const scannerBox = document.getElementById("scanner-box");
+            const routeData = NavConfig["durak1"].destinations[targetDestId];
+            if (!routeData) {
+                introScreen.innerHTML = "<h2>Hata: Rota Bulunamadı</h2>";
+                return;
+            }
 
-      const startTarget = document.getElementById("start-target");
-      const arrivalTarget = document.getElementById("arrival-target");
-
-      if (!targetDestId) return window.location.href = "index.html";
-
-      const routeData = NavConfig["durak1"].destinations[targetDestId];
-      if (!routeData) return uiPanel.innerText = "Rota bulunamadı.";
-
-      // 1. Başlangıç Oklarını Oluşturma 
-      routeData.path.forEach((point, index) => {
-        const arrowEl = document.createElement('a-cone');
-        arrowEl.setAttribute('radius-bottom', '0.4');
-        arrowEl.setAttribute('radius-top', '0');
-        arrowEl.setAttribute('height', '1.2');
-        arrowEl.setAttribute('color', routeData.color);
-        arrowEl.setAttribute('position', point.pos);
-        arrowEl.setAttribute('rotation', point.rot);
-        // KASMA ÇÖZÜMÜ: Poligon detayını düşürerek GPU yükünü azaltıyoruz
-        arrowEl.setAttribute('segments-radial', '6');
-        arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
-
-        arrowEl.setAttribute('animation', `
+            // --- 1. Rota Oklarını Çizme (WebXR Mantığı) ---
+            
+           
+            routeData.path.forEach((point, index) => {
+                const arrowEl = document.createElement('a-cone');
+                arrowEl.setAttribute('radius-bottom', '0.4');
+                arrowEl.setAttribute('radius-top', '0');
+                arrowEl.setAttribute('height', '1.2');
+                arrowEl.setAttribute('color', routeData.color);
+                
+                // WebXR'da zemin genellikle y=0 veya kameranın boyuna göre y=-1.5'tir.
+                arrowEl.setAttribute('position', point.pos);
+                arrowEl.setAttribute('rotation', point.rot);
+                arrowEl.setAttribute('segments-radial', '6'); 
+                
+              
+                arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
+                arrowEl.setAttribute('animation', `
                     property: material.opacity; from: 0.2; to: 1.0; 
                     dir: alternate; dur: 600; loop: true; 
                     delay: ${index * 200}; easing: easeInOutSine;
                 `);
+                
+                routeContainer.appendChild(arrowEl);
+            });
 
-        startTarget.appendChild(arrowEl);
-      });
+            // --- 2. WebXR (AR Moduna) Giriş Olayı ---
+            // Kullanıcı sağ alttaki AR butonuna basıp kamerayı açtığında tetiklenir
+            sceneEl.addEventListener('enter-vr', function () {
+                if (sceneEl.is('ar-mode')) {
+                    // Karşılama ekranını gizle
+                    introScreen.style.display = "none";
+                    
+                    // AR içi Overlay (Navbar) göster
+                    topNavbar.style.display = "block";
+                    navInstruction.innerText = routeData.instruction;
 
-      document.querySelector('a-scene').addEventListener('arReady', () => {
-        document.getElementById("loading-screen").style.display = "none";
-      });
+                    // Sesli uyarı ver
+                    if ('speechSynthesis' in window) {
+                        const speech = new SpeechSynthesisUtterance(routeData.audioText);
+                        speech.lang = 'tr-TR';
+                        window.speechSynthesis.speak(speech);
+                    }
+                }
+            });
 
-      let hasSpoken = false;
-
-      // --- İŞ AKIŞI MANTIĞI ---
-
-      // A) Başlangıç Afişi Bulunduğunda
-      startTarget.addEventListener("targetFound", () => {
-        uiPanel.classList.add("hidden"); // Kırmızı uyarıyı gizle
-        scannerBox.classList.add("hidden"); // Tarayıcı efektini gizle
-
-        topNavbar.classList.add("visible");
-        navInstruction.innerText = routeData.instruction; // "15 Metre İleri Git"
-
-        if (!hasSpoken && 'speechSynthesis' in window) {
-          const speech = new SpeechSynthesisUtterance(routeData.audioText);
-          speech.lang = 'tr-TR';
-          window.speechSynthesis.speak(speech);
-          hasSpoken = true;
-        }
-        // Afiş bulununca ekrandaki sabit kılavuz okunu görünür yap
-        document.getElementById('hud-arrow').setAttribute('material', 'opacity: 0.8; transparent: true;');
-      });
-
-      // B) Kullanıcı Yürümeye Başladığında (Afiş Kaybedildiğinde)
-      startTarget.addEventListener("targetLost", () => {
-        // Oklar sistem gereği kaybolacak.
-      });
-
-      // C) Hedef Kapısına Varıldığında (Varış Afişi Bulunduğunda)
-      arrivalTarget.addEventListener("targetFound", () => {
-        topNavbar.classList.add("success");
-        navInstruction.innerText = "🎉 Hedefe Ulaştınız! Yönlendiriliyorsunuz...";
-
-        // 3 saniye sonra seçme ekranına (index.html) geri dön
-        setTimeout(() => {
-          localStorage.removeItem('hastane_hedef'); // Rotayı temizle
-          window.location.href = routeData.nextStop;
-        }, 3000);
-      });
-    });
-  </script>
+            // AR Modundan Çıkış Olayı (Kullanıcı geri tuşuna basarsa)
+            sceneEl.addEventListener('exit-vr', function () {
+                introScreen.style.display = "flex";
+                topNavbar.style.display = "none";
+            });
+        });
+    </script>
 </body>
-
 </html>

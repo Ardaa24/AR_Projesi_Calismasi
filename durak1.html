@@ -15,12 +15,41 @@
         
         #top-navbar {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.95);
+            width: 80%; max-width: 400px; background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(10px); color: white; padding: 15px 20px;
             border-radius: 20px; text-align: center; font-size: 1.2rem; font-weight: bold;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-bottom: 3px solid #00FF00;
             display: none; 
         }
+
+        /* YENİ: Hamburger Menü Stilleri */
+        #menu-container {
+            position: absolute; top: 20px; right: 20px; display: none; pointer-events: auto; z-index: 2000;
+        }
+        .hamburger-btn {
+            background: rgba(20, 20, 20, 0.9); border: 2px solid #00FF00; color: white;
+            border-radius: 8px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s;
+        }
+        .hamburger-btn:active { transform: scale(0.9); }
+        
+        .dropdown-menu {
+            display: none; position: absolute; top: 60px; right: 0; width: 220px;
+            background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8); border: 1px solid #333;
+        }
+        .dropdown-menu.show { display: block; }
+        
+        .menu-item {
+            padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333;
+            cursor: pointer; display: flex; align-items: center; transition: background 0.2s;
+        }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:hover { background: rgba(255, 255, 255, 0.1); }
+        
+        .item-cancel { color: #ff5252; }
+        .item-disabled { color: #757575; cursor: not-allowed; }
+        .item-disabled:hover { background: none; }
 
         #intro-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -29,31 +58,15 @@
             z-index: 2000; box-sizing: border-box;
         }
 
-        .instruction-box {
-            background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 15px;
-            border: 2px solid #3498db; max-width: 400px; margin-bottom: 20px;
-        }
-
+        .instruction-box { background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 15px; border: 2px solid #3498db; max-width: 400px; margin-bottom: 20px; }
         h2 { margin-top: 0; color: #3498db; }
         p { font-size: 1.1rem; line-height: 1.5; }
         
-        /* BUTON ARTIK HER ZAMAN GÖRÜNÜR */
         #my-custom-button {
-            display: block; 
-            background-color: #00FF00;
-            color: #000;
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
-            transition: transform 0.2s;
-            margin-top: 15px;
-            width: 100%;
+            display: block; background-color: #00FF00; color: #000; font-size: 1.5rem; font-weight: bold;
+            padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; width: 100%;
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4); margin-top: 15px;
         }
-        #my-custom-button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -63,15 +76,24 @@
             <h2>📍 Başlangıç Noktası</h2>
             <p>1. Sırtınızı karekodu okuttuğunuz afişe verin.</p>
             <p>2. Telefonunuzu gideceğiniz koridora doğru düz tutun.</p>
-            
             <button id="my-custom-button">🚀 AR'yi Başlat</button>
         </div>
     </div>
 
     <div id="overlay-container">
+        
         <div id="top-navbar" role="status">
             <span id="nav-instruction">Talimat bekleniyor...</span>
         </div>
+
+        <div id="menu-container">
+            <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+            <div class="dropdown-menu" id="dropdown-menu">
+                <div class="menu-item item-cancel" onclick="cancelRoute()">❌ Rotayı İptal Et</div>
+                <div class="menu-item item-disabled">🔄 Yeniden Rota Seç</div>
+            </div>
+        </div>
+
     </div>
 
     <a-scene 
@@ -81,15 +103,28 @@
         vr-mode-ui="enabled: false"> 
         
         <a-camera position="0 1.6 0"></a-camera>
-
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
     <script>
+        // --- Hamburger Menü Fonksiyonları ---
+        function toggleMenu() {
+            document.getElementById("dropdown-menu").classList.toggle("show");
+        }
+
+        function cancelRoute() {
+            if(confirm("Rotayı iptal etmek istediğinize emin misiniz?")) {
+                localStorage.removeItem('hastane_hedef');
+                window.location.href = "index.html"; // Başlangıca dön
+            }
+        }
+
+        // --- AR Mantığı ---
         document.addEventListener("DOMContentLoaded", () => {
             const targetDestId = NavigationState.getDestination();
             const introScreen = document.getElementById("intro-screen");
             const topNavbar = document.getElementById("top-navbar");
+            const menuContainer = document.getElementById("menu-container"); // YENİ
             const navInstruction = document.getElementById("nav-instruction");
             const routeContainer = document.getElementById("route-container");
             const sceneEl = document.querySelector('a-scene');
@@ -103,16 +138,12 @@
                 return;
             }
 
-            /// Rota Oklarını Sahneye Ekleme
+            // Okları Çiz
             routeData.path.forEach((point, index) => {
                 const arrowEl = document.createElement('a-cone');
-                
-                // --- OK BOYUTLARI --
-                arrowEl.setAttribute('radius-bottom', '0.2'); // Eski değer: 0.4 idi
+                arrowEl.setAttribute('radius-bottom', '0.2'); 
                 arrowEl.setAttribute('radius-top', '0');
-                arrowEl.setAttribute('height', '0.6');        // Eski değer: 1.2 idi
-                // -------------------------------
-                
+                arrowEl.setAttribute('height', '0.6');        
                 arrowEl.setAttribute('color', routeData.color);
                 arrowEl.setAttribute('position', point.pos);
                 arrowEl.setAttribute('rotation', point.rot);
@@ -128,31 +159,25 @@
                 routeContainer.appendChild(arrowEl);
             });
 
-            // --- MANUEL AR TETİKLEYİCİ ---
-            
             arButton.addEventListener('click', () => {
-                // Tarayıcı WebXR API'sini tanıyor mu? (HTTPS ve tarayıcı uyumluluğu kontrolü)
                 if (navigator.xr) {
                     navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
                         if (supported) {
-                            // Cihaz ARCore destekliyor, AR moduna gir!
                             sceneEl.enterAR();
                         } else {
-                            // Cihaz AR desteklemiyorsa (Örn: iPhone Safari veya çok eski Android)
-                            alert("❌ Cihazınız veya tarayıcınız WebXR (AR) desteklemiyor. Lütfen güncel bir Android cihazda Google Chrome kullanın.");
+                            alert("❌ Cihazınız veya tarayıcınız WebXR desteklemiyor.");
                         }
                     });
                 } else {
-                    // Sayfa HTTP ile açılmışsa veya tarayıcı çok eskiyse
-                    alert("❌ WebXR API bulunamadı! Sayfaya 'http://' yerine 'https://' ile (GitHub Pages linkiyle) girdiğinizden emin olun.");
+                    alert("❌ WebXR API bulunamadı!");
                 }
             });
 
-            // AR Moduna Başarıyla Girildiğinde Çalışacak Kodlar
             sceneEl.addEventListener('enter-vr', function () {
                 if (sceneEl.is('ar-mode')) {
                     introScreen.style.display = "none";
                     topNavbar.style.display = "block";
+                    menuContainer.style.display = "block"; // YENİ: AR açılınca menüyü göster
                     navInstruction.innerText = routeData.instruction;
 
                     if ('speechSynthesis' in window) {
@@ -163,10 +188,11 @@
                 }
             });
 
-            // AR Modundan Çıkıldığında (Kullanıcı geri tuşuna basarsa)
             sceneEl.addEventListener('exit-vr', function () {
                 introScreen.style.display = "flex";
                 topNavbar.style.display = "none";
+                menuContainer.style.display = "none"; // YENİ: AR kapanınca menüyü gizle
+                document.getElementById("dropdown-menu").classList.remove("show"); // Açık kaldıysa kapat
             });
         });
     </script>

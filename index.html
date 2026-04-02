@@ -11,6 +11,8 @@
             --text-color: #FFFFFF;
             --btn-bg: #2196F3;
             --btn-hover: #1976D2;
+            --btn-disabled: #424242; /* Pasif buton rengi */
+            --text-disabled: #9E9E9E; /* Pasif yazı rengi */
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -32,6 +34,8 @@
             width: 100%;
             max-width: 400px;
         }
+        
+        /* Aktif Buton Stilleri */
         button.dest-btn {
             background-color: var(--btn-bg);
             color: white;
@@ -43,13 +47,29 @@
             cursor: pointer;
             transition: transform 0.2s, background-color 0.2s;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         button.dest-btn:hover, button.dest-btn:focus {
             background-color: var(--btn-hover);
             transform: scale(1.02);
-            outline: 4px solid #FFEB3B; /* A11y için odak çerçevesi */
+            outline: 3px solid #FFEB3B; 
         }
+
+        /* Pasif Buton Stilleri */
+        button.dest-btn.disabled {
+            background-color: var(--btn-disabled);
+            color: var(--text-disabled);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            outline: none;
+            border: 1px solid #555;
+        }
+        
         .icon { margin-right: 10px; }
+        .badge { font-size: 0.8rem; background: #FF5252; color: white; padding: 3px 8px; border-radius: 10px; margin-left: auto; }
     </style>
 </head>
 <body>
@@ -70,15 +90,24 @@
         <button class="dest-btn" onclick="startNavigation('danisma')" aria-label="Danışma Noktası">
             <span class="icon">ℹ️</span> Danışma
         </button>
+        <button class="dest-btn" onclick="startNavigation('goz_poliklinigi')" aria-label="Göz Polikliniği">
+            <span class="icon">👁️</span> Göz Polikliniği
+        </button>
+
+        <button class="dest-btn disabled" disabled aria-label="Kardiyoloji (Yapım Aşamasında)">
+            <span class="icon">❤️</span> Kardiyoloji <span class="badge">Yakında</span>
+        </button>
+        <button class="dest-btn disabled" disabled aria-label="Ortopedi (Yapım Aşamasında)">
+            <span class="icon">🦴</span> Ortopedi <span class="badge">Yakında</span>
+        </button>
+        <button class="dest-btn disabled" disabled aria-label="Dahiliye (Yapım Aşamasında)">
+            <span class="icon">🩺</span> Dahiliye <span class="badge">Yakında</span>
+        </button>
     </div>
 
     <script>
         function startNavigation(destinationId) {
-            // Hedefi config.js'deki yapıya kaydet
             NavigationState.setDestination(destinationId);
-            
-            // Kullanıcı hedefini seçtikten sonra, bulunduğu yerdeki ilk durağı okutmak üzere AR sahnesine yönlendir.
-            // Gerçek senaryoda QR kod okutulduğunda durak1.html açılır. Test için direkt yönlendiriyoruz.
             window.location.href = "durak1.html"; 
         }
     </script>

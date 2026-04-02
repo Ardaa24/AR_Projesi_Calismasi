@@ -8,17 +8,27 @@ const NavConfig = {
                 audioText: "Altı adım ileri gidip sağa dönünüz.",
                 color: "#00FF00",
                 path: [
-                    // --- 1. BÖLÜM: 4.2 Metre İleri (6 Adım x 0.7m) ---
-                    { pos: "0 0.1 -1.4", rot: "-90 0 0" },
-                    { pos: "0 0.1 -2.8", rot: "-90 0 0" },
-                    { pos: "0 0.1 -4.2", rot: "-90 0 0" }, // Dönüş noktası (6. adım)
+                    // --- 1. BÖLÜM: 6 Adım İleri (Her adım ~0.7m, oklar sıklaştırıldı) ---
+                    // Y: 0.02 ile yere milimetrik yapıştır.
+                    { pos: "0 0.02 -0.7", rot: "-90 0 0" },
+                    { pos: "0 0.02 -1.4", rot: "-90 0 0" },
+                    { pos: "0 0.02 -2.1", rot: "-90 0 0" },
+                    { pos: "0 0.02 -2.8", rot: "-90 0 0" },
+                    { pos: "0 0.02 -3.5", rot: "-90 0 0" },
+                    { pos: "0 0.02 -4.2", rot: "-90 0 0" }, // 6. Adım Sonu (Köşe)
 
-                    // --- 2. BÖLÜM: 4.9 Metre Sağ (7 Adım x 0.7m) ---
-                    { pos: "1.6 0.1 -4.2", rot: "-90 -90 0" },
-                    { pos: "3.2 0.1 -4.2", rot: "-90 -90 0" },
-                    { pos: "4.9 0.1 -4.2", rot: "-90 -90 0" }
+                    // --- 2. BÖLÜM: 7 Adım Sağa (X ekseni artar, Z aynı kalır) ---
+                    // Tam dönüş köşesine yumuşak bir geçiş oku (45 derece)
+                    { pos: "0.5 0.02 -4.2", rot: "-90 -45 0" }, 
+                    
+                    { pos: "1.4 0.02 -4.2", rot: "-90 -90 0" },
+                    { pos: "2.1 0.02 -4.2", rot: "-90 -90 0" },
+                    { pos: "2.8 0.02 -4.2", rot: "-90 -90 0" },
+                    { pos: "3.5 0.02 -4.2", rot: "-90 -90 0" },
+                    { pos: "4.2 0.02 -4.2", rot: "-90 -90 0" },
+                    { pos: "4.9 0.02 -4.2", rot: "-90 -90 0" } // Hedef
                 ]
-            },
+            }
         }
     },
 

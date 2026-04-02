@@ -78,32 +78,29 @@
     <p class="desc">Lütfen hedefinizi seçin, ardından duvardaki en yakın yönlendirme kodunu okutun.</p>
 
     <div class="dest-grid" role="group" aria-label="Varış Noktaları">
-        <button class="dest-btn" onclick="startNavigation('noroloji')" aria-label="Nöroloji Birimi">
-            <span class="icon">🧠</span> Nöroloji
-        </button>
-        <button class="dest-btn" onclick="startNavigation('engelli_tuvaleti')" aria-label="Engelli Tuvaleti">
-            <span class="icon">♿</span> Engelli Tuvaleti
-        </button>
-        <button class="dest-btn" onclick="startNavigation('laboratuvar')" aria-label="Laboratuvar (Farklı Kat)">
-            <span class="icon">🔬</span> Laboratuvar
-        </button>
-        <button class="dest-btn" onclick="startNavigation('danisma')" aria-label="Danışma Noktası">
-            <span class="icon">ℹ️</span> Danışma
-        </button>
-        <button class="dest-btn" onclick="startNavigation('goz_poliklinigi')" aria-label="Göz Polikliniği">
-            <span class="icon">👁️</span> Göz Polikliniği
-        </button>
+    <button class="dest-btn" onclick="startNavigation('noroloji')" aria-label="Nöroloji Birimi">
+        <span class="icon">🧠</span> Nöroloji
+    </button>
+    <button class="dest-btn" onclick="startNavigation('engelli_tuvaleti')" aria-label="Engelli Tuvaleti">
+        <span class="icon">♿</span> Engelli Tuvaleti
+    </button>
+    <button class="dest-btn" onclick="startNavigation('laboratuvar')" aria-label="Laboratuvar (Farklı Kat)">
+        <span class="icon">🔬</span> Laboratuvar
+    </button>
+    <button class="dest-btn" onclick="startNavigation('danisma')" aria-label="Danışma Noktası">
+        <span class="icon">ℹ️</span> Danışma
+    </button>
 
-        <button class="dest-btn disabled" disabled aria-label="Kardiyoloji (Yapım Aşamasında)">
-            <span class="icon">❤️</span> Kardiyoloji <span class="badge">Yakında</span>
-        </button>
-        <button class="dest-btn disabled" disabled aria-label="Ortopedi (Yapım Aşamasında)">
-            <span class="icon">🦴</span> Ortopedi <span class="badge">Yakında</span>
-        </button>
-        <button class="dest-btn disabled" disabled aria-label="Dahiliye (Yapım Aşamasında)">
-            <span class="icon">🩺</span> Dahiliye <span class="badge">Yakında</span>
-        </button>
-    </div>
+    <button class="dest-btn disabled" disabled aria-label="Göz Polikliniği (Yapım Aşamasında)">
+        <span class="icon">👁️</span> Göz Polikliniği <span class="badge">Yakında</span>
+    </button>
+    <button class="dest-btn disabled" disabled aria-label="Kardiyoloji (Yapım Aşamasında)">
+        <span class="icon">❤️</span> Kardiyoloji <span class="badge">Yakında</span>
+    </button>
+    <button class="dest-btn disabled" disabled aria-label="Ortopedi (Yapım Aşamasında)">
+        <span class="icon">🦴</span> Ortopedi <span class="badge">Yakında</span>
+    </button>
+</div>
 
     <script>
         function startNavigation(destinationId) {

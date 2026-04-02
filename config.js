@@ -1,30 +1,62 @@
 // config.js
 const NavConfig = {
+    // 1. DURAK: Başlangıç QR -> Nöroloji (Salon)
+    // 8 adım ileri (5.6m), 7 adım sağ (4.9m)
     "durak1": {
-        locationName: "Ana Giriş (Test Odası)",
+        locationName: "Ana Giriş",
         destinations: {
             "noroloji": {
-                // UI (Üst Bar) ve Sesli Uyarıları ölçülerine göre güncelledi
-                instruction: "4 Metre İleri, Sonra Sola Dönünüz ⬅️",
-                audioText: "Yaklaşık 4 metre ileri gidip, sola dönünüz ve 3 buçuk metre ilerleyiniz.",
+                instruction: "8 Adım İleri, Sonra Sağa Dönünüz",
+                audioText: "Sekiz adım ileri gidip sağa dönünüz.",
                 color: "#00FF00",
                 path: [
-                    // --- 1. BÖLÜM: 4.2 Metre Dümdüz İleri (Z ekseni eksiye gider, X sıfırdır) ---
-                    // Not: Y ekseni zeminle iç içe geçmesin diye 0.1 yapıldı
-                    { pos: "0 0.1 -1.5", rot: "-90 0 0" }, // 1.5 metre ileride
-                    { pos: "0 0.1 -3.0", rot: "-90 0 0" }, // 3.0 metre ileride
-                    { pos: "0 0.1 -4.2", rot: "-90 0 0" }, // 4.2 metre ileride (Köşeye vardık)
+                    { pos: "0 0.1 -1.8", rot: "-90 0 0" },
+                    { pos: "0 0.1 -3.6", rot: "-90 0 0" },
+                    { pos: "0 0.1 -5.6", rot: "-90 0 0" }, // 5.6m ileri (Dönüş Noktası)
+                    { pos: "1.6 0.1 -5.6", rot: "-90 -90 0" },
+                    { pos: "3.2 0.1 -5.6", rot: "-90 -90 0" },
+                    { pos: "4.9 0.1 -5.6", rot: "-90 -90 0" } // 4.9m sağa (Salon Hedef)
+                ]
+            }
+        }
+    },
 
-                    // --- 2. BÖLÜM: Sola Dönüş ve 3.5 Metre İlerleme ---
-                    // Sola dönmek için Y rotasyonu 90 yapılır: rot: "-90 90 0"
-                    // X ekseninde sola doğru eksi değerlere gidilir. Z ekseni artık sabit kalır (-4.2)
-                    { pos: "-1.2 0.1 -4.2", rot: "-90 90 0" }, // Sola döndük, 1.2 metre ilerledik
-                    { pos: "-2.5 0.1 -4.2", rot: "-90 90 0" }, // 2.5 metre ilerledik
-                    { pos: "-3.5 0.1 -4.2", rot: "-90 90 0" }  // Hedefe vardık! (Sol taraftaki QR kodun önü)
-                ],
-                // Eski sistemdeki arrivalIndex kaldırıldı, sistem hedefe varıldığını kullanıcının
-                // o noktadaki yeni QR kodu okutmasıyla (index.html'e yeniden girmesiyle) anlayacak.
-                nextStop: "index.html" 
+    // 2. DURAK: Nöroloji (Salon) -> Engelli Tuvaleti
+    // 15 adım geri (10.5m), 3 adım sol (2.1m)
+    "durak_noroloji": {
+        locationName: "Nöroloji (Salon)",
+        destinations: {
+            "engelli_tuvaleti": {
+                instruction: "15 Adım Geri, Sonra Sola Dönünüz",
+                audioText: "On beş adım geri gidip sola dönünüz.",
+                color: "#FFD700",
+                path: [
+                    { pos: "0 0.1 3.5", rot: "-90 0 180" },
+                    { pos: "0 0.1 7.0", rot: "-90 0 180" },
+                    { pos: "0 0.1 10.5", rot: "-90 0 180" }, // 10.5m geri (Dönüş Noktası)
+                    { pos: "-1.0 0.1 10.5", rot: "-90 90 0" },
+                    { pos: "-2.1 0.1 10.5", rot: "-90 90 0" } // 2.1m sola (Tuvalet Hedef)
+                ]
+            }
+        }
+    },
+
+    // 3. DURAK: Engelli Tuvaleti -> Laboratuvar (Yatak Odası)
+    // 7 adım geri (4.9m), 3 adım sol (2.1m)
+    "durak_tuvalet": {
+        locationName: "Engelli Tuvaleti",
+        destinations: {
+            "laboratuvar": {
+                instruction: "7 Adım Geri, Sonra Sola Dönünüz",
+                audioText: "Yedi adım geri gidip sola dönünüz.",
+                color: "#00BFFF",
+                path: [
+                    { pos: "0 0.1 1.6", rot: "-90 0 180" },
+                    { pos: "0 0.1 3.2", rot: "-90 0 180" },
+                    { pos: "0 0.1 4.9", rot: "-90 0 180" }, // 4.9m geri (Dönüş Noktası)
+                    { pos: "-1.0 0.1 4.9", rot: "-90 90 0" },
+                    { pos: "-2.1 0.1 4.9", rot: "-90 90 0" } // 2.1m sola (Yatak Odası Hedef)
+                ]
             }
         }
     }

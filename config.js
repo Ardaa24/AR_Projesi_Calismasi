@@ -3,30 +3,29 @@ const NavConfig = {
     "durak1": {
         locationName: "Ana Giriş",
         destinations: {
-            "noroloji": {
+           "noroloji": {
                 instruction: "6 Adım İleri, Sonra Sağa Dönünüz ➡️",
                 audioText: "Altı adım ileri gidip sağa dönünüz.",
                 color: "#00FF00",
                 path: [
-                    // --- 1. BÖLÜM: 6 Adım İleri (Her adım ~0.7m, oklar sıklaştırıldı) ---
-                    // Y: 0.02 ile yere milimetrik yapıştır.
-                    { pos: "0 0.02 -0.7", rot: "-90 0 0" },
-                    { pos: "0 0.02 -1.4", rot: "-90 0 0" },
-                    { pos: "0 0.02 -2.1", rot: "-90 0 0" },
-                    { pos: "0 0.02 -2.8", rot: "-90 0 0" },
-                    { pos: "0 0.02 -3.5", rot: "-90 0 0" },
-                    { pos: "0 0.02 -4.2", rot: "-90 0 0" }, // 6. Adım Sonu (Köşe)
+                    // Y ekseni artık zemin algılama beklenmediği için kesin olarak -1.5m (yerde) olacak.
+                    { pos: "0 -1.5 -0.7", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -1.4", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -2.1", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -2.8", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -3.5", rot: "-90 0 0" },
+                    { pos: "0 -1.5 -4.2", rot: "-90 0 0" }, // 6. Adım Sonu (Köşe)
 
-                    // --- 2. BÖLÜM: 7 Adım Sağa (X ekseni artar, Z aynı kalır) ---
-                    // Tam dönüş köşesine yumuşak bir geçiş oku (45 derece)
-                    { pos: "0.5 0.02 -4.2", rot: "-90 -45 0" }, 
+                    // Dönüş oku
+                    { pos: "0.5 -1.5 -4.2", rot: "-90 -45 0" }, 
                     
-                    { pos: "1.4 0.02 -4.2", rot: "-90 -90 0" },
-                    { pos: "2.1 0.02 -4.2", rot: "-90 -90 0" },
-                    { pos: "2.8 0.02 -4.2", rot: "-90 -90 0" },
-                    { pos: "3.5 0.02 -4.2", rot: "-90 -90 0" },
-                    { pos: "4.2 0.02 -4.2", rot: "-90 -90 0" },
-                    { pos: "4.9 0.02 -4.2", rot: "-90 -90 0" } // Hedef
+                    // Sağa Doğru Giden Oklar
+                    { pos: "1.4 -1.5 -4.2", rot: "-90 -90 0" },
+                    { pos: "2.1 -1.5 -4.2", rot: "-90 -90 0" },
+                    { pos: "2.8 -1.5 -4.2", rot: "-90 -90 0" },
+                    { pos: "3.5 -1.5 -4.2", rot: "-90 -90 0" },
+                    { pos: "4.2 -1.5 -4.2", rot: "-90 -90 0" },
+                    { pos: "4.9 -1.5 -4.2", rot: "-90 -90 0" } // Hedef
                 ]
             }
         }

@@ -22,46 +22,35 @@
             display: none; 
         }
 
-        /* Hamburger Menü */
-        #menu-container {
-            position: absolute; top: 20px; right: 20px; display: none; pointer-events: auto; z-index: 2000;
-        }
-        .hamburger-btn {
-            background: rgba(20, 20, 20, 0.9); border: 2px solid #00FF00; color: white;
-            border-radius: 8px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem;
-        }
+        #menu-container { position: absolute; top: 20px; right: 20px; display: none; pointer-events: auto; z-index: 2000; }
+        .hamburger-btn { background: rgba(20, 20, 20, 0.9); border: 2px solid #00FF00; color: white; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem; }
         
-        .dropdown-menu {
-            display: none; position: absolute; top: 60px; right: 0; width: 220px;
-            background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.8); border: 1px solid #333;
-        }
+        .dropdown-menu { display: none; position: absolute; top: 60px; right: 0; width: 220px; background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.8); border: 1px solid #333; }
         .dropdown-menu.show { display: block; }
-        
-        .menu-item {
-            padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333;
-            cursor: pointer; display: flex; align-items: center; transition: background 0.2s;
-        }
+        .menu-item { padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
         .menu-item:last-child { border-bottom: none; }
-        
-        /* Menü Durum Renkleri */
         .item-reached { color: #00FF00; }
         .item-cancel { color: #ff5252; }
         .item-disabled { color: #757575; cursor: not-allowed; opacity: 0.5; }
 
+        /* KESİN ÇÖZÜM: UI ORTALAMA EKRANI */
         #intro-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background-color: #121212; color: white; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center; padding: 20px;
-            z-index: 2000;
+            justify-content: center; align-items: center; text-align: center; 
+            padding: 20px; z-index: 2000; box-sizing: border-box; margin: 0;
         }
 
-        .instruction-box { background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 15px; border: 2px solid #3498db; max-width: 400px; }
+        .instruction-box { 
+            background: rgba(255, 255, 255, 0.1); padding: 30px 20px; border-radius: 15px; 
+            border: 2px solid #3498db; width: 100%; max-width: 400px; box-sizing: border-box; 
+            margin: 0 auto;
+        }
         
         #my-custom-button {
             display: block; background-color: #00FF00; color: #000; font-size: 1.5rem; font-weight: bold;
             padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; width: 100%;
-            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4); margin-top: 15px;
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4); margin-top: 15px; box-sizing: border-box;
         }
     </style>
 </head>
@@ -70,7 +59,7 @@
     <div id="intro-screen">
         <div class="instruction-box">
             <h2 id="intro-title">📍 Navigasyon Hazır</h2>
-            <p id="intro-desc">Lütfen sırtınızı durak afişine verin ve telefonunuzu düz tutun.</p>
+            <p id="intro-desc">Sırtınızı afişe verin ve telefonu koridora doğru tutun.</p>
             <button id="my-custom-button">🚀 AR'yi Başlat</button>
         </div>
     </div>
@@ -79,7 +68,6 @@
         <div id="top-navbar">
             <span id="nav-instruction">Talimat bekleniyor...</span>
         </div>
-
         <div id="menu-container">
             <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
             <div class="dropdown-menu" id="dropdown-menu">
@@ -90,44 +78,31 @@
         </div>
     </div>
 
-<a-scene 
-        webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor, dom-overlay; overlayElement: #overlay-container;"
-        color-space="sRGB" 
-        renderer="colorManagement: true, physicallyCorrectLights"
+    <a-scene 
+        webxr="referenceSpaceType: local; requiredFeatures: local, dom-overlay; overlayElement: #overlay-container;"
         vr-mode-ui="enabled: false"> 
-        
-        <a-camera position="0 1.6 0"></a-camera>
+        <a-camera position="0 0 0"></a-camera>
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
     <script>
         let isReached = false;
 
-        function toggleMenu() {
-            document.getElementById("dropdown-menu").classList.toggle("show");
-        }
+        function toggleMenu() { document.getElementById("dropdown-menu").classList.toggle("show"); }
 
-        // Hedefe vardım onayı
         function confirmArrival() {
             if (confirm("Bu noktaya vardığınızı onaylıyor musunuz?")) {
                 isReached = true;
-                // Okları temizle
                 document.getElementById("route-container").innerHTML = "";
-                // Menü durumlarını güncelle
                 document.getElementById("menu-reached").style.display = "none";
                 document.getElementById("menu-new-route").classList.remove("item-disabled");
-                // Navbar güncelle
                 document.getElementById("nav-instruction").innerText = "Hedefe varıldı. Yeni rota seçebilirsiniz.";
                 toggleMenu();
             }
         }
 
-        // Yeni rota seçimi (Sadece onaydan sonra çalışır)
         function selectNewRoute() {
-            if (!isReached) {
-                alert("Önce mevcut hedefe vardığınızı onaylamalısınız.");
-                return;
-            }
+            if (!isReached) { alert("Önce mevcut hedefe vardığınızı onaylamalısınız."); return; }
             window.location.href = "index.html";
         }
 
@@ -144,32 +119,26 @@
             const routeContainer = document.getElementById("route-container");
 
             if (!targetDestId) return window.location.href = "index.html";
-
             const routeData = NavConfig["durak1"].destinations[targetDestId];
 
-            // Rota Oklarını Çiz
-           routeData.path.forEach((point, index) => {
-                const arrowEl = document.createElement('a-cone');
-                arrowEl.setAttribute('radius-bottom', '0.15'); // Daha dar ve küçük
-                arrowEl.setAttribute('radius-top', '0');
-                arrowEl.setAttribute('height', '0.05'); 
-                arrowEl.setAttribute('color', routeData.color);
-                arrowEl.setAttribute('position', point.pos);
-                arrowEl.setAttribute('rotation', point.rot);
-                arrowEl.setAttribute('segments-radial', '4'); 
-                
-                arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
-                
-                arrowEl.setAttribute('animation', `property: material.opacity; from: 0.2; to: 1.0; dir: alternate; dur: 400; loop: true; delay: ${index * 150};`);
-                routeContainer.appendChild(arrowEl);
-            });
+            // AR Oklarını Çizme Fonksiyonu
+            function drawRoute() {
+                routeData.path.forEach((point, index) => {
+                    const arrowEl = document.createElement('a-cone');
+                    arrowEl.setAttribute('radius-bottom', '0.15');
+                    arrowEl.setAttribute('height', '0.05');
+                    arrowEl.setAttribute('segments-radial', '4');
+                    arrowEl.setAttribute('color', routeData.color);
+                    arrowEl.setAttribute('position', point.pos);
+                    arrowEl.setAttribute('rotation', point.rot);
+                    arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
+                    arrowEl.setAttribute('animation', `property: material.opacity; from: 0.2; to: 1.0; dir: alternate; dur: 400; loop: true; delay: ${index * 150};`);
+                    routeContainer.appendChild(arrowEl);
+                });
+            }
 
             document.getElementById("my-custom-button").addEventListener('click', () => {
-                if (navigator.xr) {
-                    sceneEl.enterAR();
-                } else {
-                    alert("Cihazınız WebXR desteklemiyor.");
-                }
+                if (navigator.xr) { sceneEl.enterAR(); } else { alert("Cihazınız WebXR desteklemiyor."); }
             });
 
             sceneEl.addEventListener('enter-vr', () => {
@@ -177,6 +146,19 @@
                 document.getElementById("top-navbar").style.display = "block";
                 document.getElementById("menu-container").style.display = "block";
                 document.getElementById("nav-instruction").innerText = routeData.instruction;
+
+                
+                setTimeout(() => {
+                    drawRoute();
+                }, 1000);
+            });
+
+            sceneEl.addEventListener('exit-vr', () => {
+                document.getElementById("intro-screen").style.display = "flex";
+                document.getElementById("top-navbar").style.display = "none";
+                document.getElementById("menu-container").style.display = "none";
+                document.getElementById("dropdown-menu").classList.remove("show");
+                routeContainer.innerHTML = ""; // Çıkışta okları temizle
             });
         });
     </script>

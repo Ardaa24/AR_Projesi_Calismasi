@@ -13,6 +13,7 @@
         
         #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
         
+        /* Orijinal Üst Bar (Başlangıçta Gizli) */
         #top-navbar {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             width: 80%; max-width: 400px; background: rgba(20, 20, 20, 0.95);
@@ -22,36 +23,39 @@
             display: none; 
         }
 
+        #calibration-ui {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: rgba(0, 0, 0, 0.85);
+            padding: 20px; border-radius: 15px; border: 2px solid #FFD700;
+            text-align: center; color: white; pointer-events: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+        }
+        .calib-text { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; }
+        #draw-route-btn {
+            background-color: #FFD700; color: #000; font-size: 1.3rem; font-weight: bold;
+            padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4); margin-top: 10px;
+        }
+
+        /* Hamburger Menü */
         #menu-container { position: absolute; top: 20px; right: 20px; display: none; pointer-events: auto; z-index: 2000; }
         .hamburger-btn { background: rgba(20, 20, 20, 0.9); border: 2px solid #00FF00; color: white; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem; }
-        
-        .dropdown-menu { display: none; position: absolute; top: 60px; right: 0; width: 220px; background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.8); border: 1px solid #333; }
+        .dropdown-menu { display: none; position: absolute; top: 60px; right: 0; width: 220px; background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden; border: 1px solid #333; }
         .dropdown-menu.show { display: block; }
-        .menu-item { padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
-        .menu-item:last-child { border-bottom: none; }
+        .menu-item { padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333; cursor: pointer; }
         .item-reached { color: #00FF00; }
         .item-cancel { color: #ff5252; }
         .item-disabled { color: #757575; cursor: not-allowed; opacity: 0.5; }
 
-        /* KESİN ÇÖZÜM: UI ORTALAMA EKRANI */
+        /* Giriş Ekranı */
         #intro-screen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background-color: #121212; color: white; display: flex; flex-direction: column;
             justify-content: center; align-items: center; text-align: center; 
             padding: 20px; z-index: 2000; box-sizing: border-box; margin: 0;
         }
-
-        .instruction-box { 
-            background: rgba(255, 255, 255, 0.1); padding: 30px 20px; border-radius: 15px; 
-            border: 2px solid #3498db; width: 100%; max-width: 400px; box-sizing: border-box; 
-            margin: 0 auto;
-        }
-        
-        #my-custom-button {
-            display: block; background-color: #00FF00; color: #000; font-size: 1.5rem; font-weight: bold;
-            padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; width: 100%;
-            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4); margin-top: 15px; box-sizing: border-box;
-        }
+        .instruction-box { background: rgba(255, 255, 255, 0.1); padding: 30px 20px; border-radius: 15px; border: 2px solid #3498db; width: 100%; max-width: 400px; box-sizing: border-box; }
+        #my-custom-button { display: block; background-color: #00FF00; color: #000; font-size: 1.5rem; font-weight: bold; padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; width: 100%; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -59,15 +63,22 @@
     <div id="intro-screen">
         <div class="instruction-box">
             <h2 id="intro-title">📍 Navigasyon Hazır</h2>
-            <p id="intro-desc">Sırtınızı afişe verin ve telefonu koridora doğru tutun.</p>
+            <p id="intro-desc">Bulunduğunuz duraktan rotayı başlatmak için butona tıklayın.</p>
             <button id="my-custom-button">🚀 AR'yi Başlat</button>
         </div>
     </div>
 
     <div id="overlay-container">
+        <div id="calibration-ui" style="display: none;">
+            <div class="calib-text">👇 1. Telefonu 2 saniye yere tutup zemini tarayın.</div>
+            <div class="calib-text">🚶‍♂️ 2. Koridora doğru DÜZ bakıp aşağıdaki butona basın.</div>
+            <button id="draw-route-btn">📍 Rotayı Buraya Çiz</button>
+        </div>
+
         <div id="top-navbar">
             <span id="nav-instruction">Talimat bekleniyor...</span>
         </div>
+        
         <div id="menu-container">
             <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
             <div class="dropdown-menu" id="dropdown-menu">
@@ -79,9 +90,10 @@
     </div>
 
     <a-scene 
-        webxr="referenceSpaceType: local; requiredFeatures: local, dom-overlay; overlayElement: #overlay-container;"
+        webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor, dom-overlay; overlayElement: #overlay-container;"
         vr-mode-ui="enabled: false"> 
-        <a-camera position="0 0 0"></a-camera>
+        
+        <a-camera id="ar-camera" position="0 1.6 0"></a-camera>
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
@@ -117,12 +129,35 @@
             const targetDestId = NavigationState.getDestination();
             const sceneEl = document.querySelector('a-scene');
             const routeContainer = document.getElementById("route-container");
+            const cameraEl = document.getElementById("ar-camera");
 
             if (!targetDestId) return window.location.href = "index.html";
             const routeData = NavConfig["durak1"].destinations[targetDestId];
 
-            // AR Oklarını Çizme Fonksiyonu
-            function drawRoute() {
+            // 1. GİRİŞ BUTONU
+            document.getElementById("my-custom-button").addEventListener('click', () => {
+                if (navigator.xr) { sceneEl.enterAR(); } else { alert("Cihazınız WebXR desteklemiyor."); }
+            });
+
+            //  AR BAŞLADIĞINDA (Oklar henüz çizilmez, Kalibrasyon menüsü açılır)
+            sceneEl.addEventListener('enter-vr', () => {
+                document.getElementById("intro-screen").style.display = "none";
+                document.getElementById("calibration-ui").style.display = "block"; // Kalibrasyon UI göster
+                document.getElementById("menu-container").style.display = "block";
+            });
+
+            // KULLANICI "ROTAYI BURAYA ÇİZ" BUTONUNA BASTIĞINDA
+            document.getElementById("draw-route-btn").addEventListener('click', () => {
+                // Kameranın o anki pozisyonunu ve açısını al
+                const camPos = cameraEl.getAttribute('position');
+                const camRot = cameraEl.getAttribute('rotation');
+
+                // Konteyneri kameranın tam o anki merkezine taşı, Y eksenini 0 (zemin) yap
+                routeContainer.setAttribute('position', `${camPos.x} 0 ${camPos.z}`);
+                // Konteyneri kameranın baktığı yöne doğru (sadece Y ekseninde) döndür
+                routeContainer.setAttribute('rotation', `0 ${camRot.y} 0`);
+
+                // Okları çiz
                 routeData.path.forEach((point, index) => {
                     const arrowEl = document.createElement('a-cone');
                     arrowEl.setAttribute('radius-bottom', '0.15');
@@ -135,30 +170,27 @@
                     arrowEl.setAttribute('animation', `property: material.opacity; from: 0.2; to: 1.0; dir: alternate; dur: 400; loop: true; delay: ${index * 150};`);
                     routeContainer.appendChild(arrowEl);
                 });
-            }
 
-            document.getElementById("my-custom-button").addEventListener('click', () => {
-                if (navigator.xr) { sceneEl.enterAR(); } else { alert("Cihazınız WebXR desteklemiyor."); }
-            });
-
-            sceneEl.addEventListener('enter-vr', () => {
-                document.getElementById("intro-screen").style.display = "none";
+                // Kalibrasyon menüsünü gizle, normal navigasyon barını göster
+                document.getElementById("calibration-ui").style.display = "none";
                 document.getElementById("top-navbar").style.display = "block";
-                document.getElementById("menu-container").style.display = "block";
                 document.getElementById("nav-instruction").innerText = routeData.instruction;
 
-                
-                setTimeout(() => {
-                    drawRoute();
-                }, 1000);
+                if ('speechSynthesis' in window) {
+                    const speech = new SpeechSynthesisUtterance(routeData.audioText);
+                    speech.lang = 'tr-TR';
+                    window.speechSynthesis.speak(speech);
+                }
             });
 
+            // AR'DEN ÇIKIŞ YAPILDIĞINDA
             sceneEl.addEventListener('exit-vr', () => {
                 document.getElementById("intro-screen").style.display = "flex";
                 document.getElementById("top-navbar").style.display = "none";
                 document.getElementById("menu-container").style.display = "none";
+                document.getElementById("calibration-ui").style.display = "none";
                 document.getElementById("dropdown-menu").classList.remove("show");
-                routeContainer.innerHTML = ""; // Çıkışta okları temizle
+                routeContainer.innerHTML = ""; // Okları temizle
             });
         });
     </script>

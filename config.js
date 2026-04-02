@@ -1,23 +1,24 @@
 // config.js
 const NavConfig = {
-    // 1. DURAK: Başlangıç QR -> Nöroloji (Salon)
-    // 8 adım ileri (5.6m), 7 adım sağ (4.9m)
     "durak1": {
         locationName: "Ana Giriş",
         destinations: {
             "noroloji": {
-                instruction: "8 Adım İleri, Sonra Sağa Dönünüz",
-                audioText: "Sekiz adım ileri gidip sağa dönünüz.",
+                instruction: "6 Adım İleri, Sonra Sağa Dönünüz ➡️",
+                audioText: "Altı adım ileri gidip sağa dönünüz.",
                 color: "#00FF00",
                 path: [
-                    { pos: "0 0.1 -1.8", rot: "-90 0 0" },
-                    { pos: "0 0.1 -3.6", rot: "-90 0 0" },
-                    { pos: "0 0.1 -5.6", rot: "-90 0 0" }, // 5.6m ileri (Dönüş Noktası)
-                    { pos: "1.6 0.1 -5.6", rot: "-90 -90 0" },
-                    { pos: "3.2 0.1 -5.6", rot: "-90 -90 0" },
-                    { pos: "4.9 0.1 -5.6", rot: "-90 -90 0" } // 4.9m sağa (Salon Hedef)
+                    // --- 1. BÖLÜM: 4.2 Metre İleri (6 Adım x 0.7m) ---
+                    { pos: "0 0.1 -1.4", rot: "-90 0 0" },
+                    { pos: "0 0.1 -2.8", rot: "-90 0 0" },
+                    { pos: "0 0.1 -4.2", rot: "-90 0 0" }, // Dönüş noktası (6. adım)
+
+                    // --- 2. BÖLÜM: 4.9 Metre Sağ (7 Adım x 0.7m) ---
+                    { pos: "1.6 0.1 -4.2", rot: "-90 -90 0" },
+                    { pos: "3.2 0.1 -4.2", rot: "-90 -90 0" },
+                    { pos: "4.9 0.1 -4.2", rot: "-90 -90 0" }
                 ]
-            }
+            },
         }
     },
 

@@ -9,10 +9,12 @@
         :root {
             --bg-color: #121212;
             --text-color: #FFFFFF;
-            --btn-bg: #2196F3;
-            --btn-hover: #1976D2;
-            --btn-disabled: #424242; /* Pasif buton rengi */
-            --text-disabled: #9E9E9E; /* Pasif yazı rengi */
+            /* DEĞİŞİKLİK: Yeşil -> Baby Blue (#81D4FA) */
+            --btn-bg: #81D4FA; 
+            --btn-hover: #4FC3F7; /* Biraz daha koyu baby blue */
+            --btn-disabled: #424242;
+            --text-disabled: #9E9E9E;
+            --accent-color: #81D4FA;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -23,8 +25,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
-        h1 { font-size: 2rem; text-align: center; margin-bottom: 10px; }
+        h1 { font-size: 2rem; text-align: center; margin-bottom: 10px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; }
         p.desc { font-size: 1.2rem; text-align: center; margin-bottom: 30px; color: #B0BEC5; }
         
         .dest-grid {
@@ -33,12 +37,13 @@
             gap: 15px;
             width: 100%;
             max-width: 400px;
+            margin-bottom: 50px; /* Filigran için boşluk */
         }
         
-        /* Aktif Buton Stilleri */
         button.dest-btn {
             background-color: var(--btn-bg);
-            color: white;
+            /* DEĞİŞİKLİK: Yazı rengi siyah oldu (baby blue üstünde daha iyi okunur) */
+            color: #000; 
             border: none;
             padding: 20px;
             font-size: 1.5rem;
@@ -46,7 +51,7 @@
             border-radius: 12px;
             cursor: pointer;
             transition: transform 0.2s, background-color 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(129, 212, 250, 0.3); /* Baby blue gölge */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -54,53 +59,51 @@
         button.dest-btn:hover, button.dest-btn:focus {
             background-color: var(--btn-hover);
             transform: scale(1.02);
-            outline: 3px solid #FFEB3B; 
+            outline: 3px solid #FFFFFF; 
         }
 
-        /* Pasif Buton Stilleri */
         button.dest-btn.disabled {
             background-color: var(--btn-disabled);
             color: var(--text-disabled);
             cursor: not-allowed;
             box-shadow: none;
             transform: none;
-            outline: none;
             border: 1px solid #555;
         }
         
         .icon { margin-right: 10px; }
         .badge { font-size: 0.8rem; background: #FF5252; color: white; padding: 3px 8px; border-radius: 10px; margin-left: auto; }
+
+        
+        .watermark {
+            position: fixed;
+            bottom: 5px;
+            right: 10px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.3); /* Çok az belli */
+            pointer-events: none;
+            z-index: 10000;
+        }
     </style>
 </head>
 <body>
 
     <h1>Nereye Gitmek İstiyorsunuz?</h1>
-    <p class="desc">Lütfen hedefinizi seçin, ardından duvardaki en yakın yönlendirme kodunu okutun.</p>
+    <p class="desc">Lütfen hedefinizi seçin, ardından AR kamerasını başlatın.</p>
 
     <div class="dest-grid" role="group" aria-label="Varış Noktaları">
-    <button class="dest-btn" onclick="startNavigation('noroloji')" aria-label="Nöroloji Birimi">
-        <span class="icon">🧠</span> Nöroloji
-    </button>
-    <button class="dest-btn" onclick="startNavigation('engelli_tuvaleti')" aria-label="Engelli Tuvaleti">
-        <span class="icon">♿</span> Engelli Tuvaleti
-    </button>
-    <button class="dest-btn" onclick="startNavigation('laboratuvar')" aria-label="Laboratuvar (Farklı Kat)">
-        <span class="icon">🔬</span> Laboratuvar
-    </button>
-    <button class="dest-btn" onclick="startNavigation('danisma')" aria-label="Danışma Noktası">
-        <span class="icon">ℹ️</span> Danışma
-    </button>
+        <button class="dest-btn" onclick="startNavigation('noroloji')" aria-label="Nöroloji Birimi">
+            <span class="icon">🧠</span> Nöroloji
+        </button>
+        <button class="dest-btn disabled" disabled aria-label="Engelli Tuvaleti (Yapım Aşamasında)">
+            <span class="icon">♿</span> Engelli Tuvaleti <span class="badge">Yakında</span>
+        </button>
+        <button class="dest-btn disabled" disabled aria-label="Laboratuvar (Yapım Aşamasında)">
+            <span class="icon">🔬</span> Laboratuvar <span class="badge">Yakında</span>
+        </button>
+    </div>
 
-    <button class="dest-btn disabled" disabled aria-label="Göz Polikliniği (Yapım Aşamasında)">
-        <span class="icon">👁️</span> Göz Polikliniği <span class="badge">Yakında</span>
-    </button>
-    <button class="dest-btn disabled" disabled aria-label="Kardiyoloji (Yapım Aşamasında)">
-        <span class="icon">❤️</span> Kardiyoloji <span class="badge">Yakında</span>
-    </button>
-    <button class="dest-btn disabled" disabled aria-label="Ortopedi (Yapım Aşamasında)">
-        <span class="icon">🦴</span> Ortopedi <span class="badge">Yakında</span>
-    </button>
-</div>
+    <div class="watermark">by Arda24</div>
 
     <script>
         function startNavigation(destinationId) {

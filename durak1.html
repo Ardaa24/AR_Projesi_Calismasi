@@ -13,49 +13,57 @@
         
         #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
         
-        /* Orijinal Üst Bar (Başlangıçta Gizli) */
         #top-navbar {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             width: 80%; max-width: 400px; background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(10px); color: white; padding: 15px 20px;
             border-radius: 20px; text-align: center; font-size: 1.2rem; font-weight: bold;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-bottom: 3px solid #00FF00;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+            /* DEĞİŞİKLİK: Yeşil -> Baby Blue */
+            border-bottom: 3px solid #81D4FA; 
             display: none; 
         }
 
-        #calibration-ui {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: rgba(0, 0, 0, 0.85);
-            padding: 20px; border-radius: 15px; border: 2px solid #FFD700;
-            text-align: center; color: white; pointer-events: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-        }
-        .calib-text { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; }
-        #draw-route-btn {
-            background-color: #FFD700; color: #000; font-size: 1.3rem; font-weight: bold;
-            padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%;
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4); margin-top: 10px;
-        }
-
-        /* Hamburger Menü */
         #menu-container { position: absolute; top: 20px; right: 20px; display: none; pointer-events: auto; z-index: 2000; }
-        .hamburger-btn { background: rgba(20, 20, 20, 0.9); border: 2px solid #00FF00; color: white; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem; }
-        .dropdown-menu { display: none; position: absolute; top: 60px; right: 0; width: 220px; background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        .hamburger-btn { 
+            background: rgba(20, 20, 20, 0.9); 
+            /* DEĞİŞİKLİK: Baby Blue border */
+            border: 2px solid #81D4FA; 
+            color: white; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem; 
+        }
+        
+        .dropdown-menu { display: none; position: absolute; top: 60px; right: 0; width: 220px; background: rgba(20, 20, 20, 0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.8); border: 1px solid #333; }
         .dropdown-menu.show { display: block; }
-        .menu-item { padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333; cursor: pointer; }
-        .item-reached { color: #00FF00; }
+        .menu-item { padding: 15px 20px; color: white; font-weight: bold; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:hover { background: rgba(255, 255, 255, 0.1); }
+        
+        /* DEĞİŞİKLİK: Baby Blue renkler */
+        .item-reached { color: #81D4FA; } 
         .item-cancel { color: #ff5252; }
-        .item-disabled { color: #757575; cursor: not-allowed; opacity: 0.5; }
-
-        /* Giriş Ekranı */
+        
         #intro-screen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background-color: #121212; color: white; display: flex; flex-direction: column;
             justify-content: center; align-items: center; text-align: center; 
             padding: 20px; z-index: 2000; box-sizing: border-box; margin: 0;
         }
-        .instruction-box { background: rgba(255, 255, 255, 0.1); padding: 30px 20px; border-radius: 15px; border: 2px solid #3498db; width: 100%; max-width: 400px; box-sizing: border-box; }
-        #my-custom-button { display: block; background-color: #00FF00; color: #000; font-size: 1.5rem; font-weight: bold; padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; width: 100%; margin-top: 15px; }
+        .instruction-box { background: rgba(255, 255, 255, 0.1); padding: 30px 20px; border-radius: 15px; border: 2px solid #81D4FA; width: 100%; max-width: 400px; box-sizing: border-box; }
+        
+        #my-custom-button {
+            display: block; 
+            /* DEĞİŞİKLİK: Baby Blue buton */
+            background-color: #81D4FA; color: #000; 
+            font-size: 1.5rem; font-weight: bold;
+            padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; width: 100%;
+            box-shadow: 0 5px 15px rgba(129, 212, 250, 0.4); margin-top: 15px;
+        }
+
+        /* DEĞİŞİKLİK: Filigran */
+        .watermark {
+            position: fixed; bottom: 5px; right: 10px; font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.3); pointer-events: none; z-index: 10000;
+        }
     </style>
 </head>
 <body>
@@ -63,27 +71,19 @@
     <div id="intro-screen">
         <div class="instruction-box">
             <h2 id="intro-title">📍 Navigasyon Hazır</h2>
-            <p id="intro-desc">Bulunduğunuz duraktan rotayı başlatmak için butona tıklayın.</p>
+            <p id="intro-desc">Lütfen telefonunuzu gideceğiniz koridora doğru düz tutun.</p>
             <button id="my-custom-button">🚀 AR'yi Başlat</button>
         </div>
     </div>
 
     <div id="overlay-container">
-        <div id="calibration-ui" style="display: none;">
-            <div class="calib-text">👇 1. Telefonu 2 saniye yere tutup zemini tarayın.</div>
-            <div class="calib-text">🚶‍♂️ 2. Koridora doğru DÜZ bakıp aşağıdaki butona basın.</div>
-            <button id="draw-route-btn">📍 Rotayı Buraya Çiz</button>
-        </div>
-
         <div id="top-navbar">
             <span id="nav-instruction">Talimat bekleniyor...</span>
         </div>
-        
         <div id="menu-container">
             <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
             <div class="dropdown-menu" id="dropdown-menu">
-                <div class="menu-item item-reached" id="menu-reached" onclick="confirmArrival()">✅ Hedefe Vardım</div>
-                <div class="menu-item item-disabled" id="menu-new-route" onclick="selectNewRoute()">🔄 Yeni Rota Seç</div>
+                <div class="menu-item item-reached" id="menu-action-btn" onclick="handleLegComplete()">✅ Noktaya Vardım</div>
                 <div class="menu-item item-cancel" onclick="cancelNavigation()">❌ Rotayı İptal Et</div>
             </div>
         </div>
@@ -92,30 +92,44 @@
     <a-scene 
         webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor, dom-overlay; overlayElement: #overlay-container;"
         vr-mode-ui="enabled: false"> 
-        
-        <a-camera id="ar-camera" position="0 1.6 0"></a-camera>
+        <a-camera position="0 0 0"></a-camera>
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
+    <div class="watermark">by Arda24</div>
+
     <script>
-        let isReached = false;
+        // DEĞİŞİKLİK: Çoklu bacak (leg) mantığı değişkenleri
+        let currentLegIndex = 0; 
+        let routeLegs = [];
+        let sceneEl, routeContainer, actionBtn;
 
         function toggleMenu() { document.getElementById("dropdown-menu").classList.toggle("show"); }
 
-        function confirmArrival() {
-            if (confirm("Bu noktaya vardığınızı onaylıyor musunuz?")) {
-                isReached = true;
-                document.getElementById("route-container").innerHTML = "";
-                document.getElementById("menu-reached").style.display = "none";
-                document.getElementById("menu-new-route").classList.remove("item-disabled");
-                document.getElementById("nav-instruction").innerText = "Hedefe varıldı. Yeni rota seçebilirsiniz.";
-                toggleMenu();
-            }
-        }
+        // DEĞİŞİKLİK: Virajda Soft-Reset Mantığı
+        function handleLegComplete() {
+            // AR modundan geçici olarak çıkıyoruz (0 noktasını sıfırlamak için)
+            sceneEl.exitVR();
+            toggleMenu();
 
-        function selectNewRoute() {
-            if (!isReached) { alert("Önce mevcut hedefe vardığınızı onaylamalısınız."); return; }
-            window.location.href = "index.html";
+            currentLegIndex++; // Bir sonraki bacağa geç
+
+            if (currentLegIndex < routeLegs.length) {
+                // Eğer daha gidilecek bacak (örneğin virajdan sonrası) varsa
+                alert("Dönüş noktasına varıldı. Lütfen şimdi sola dönün, yeni koridora düz bakın ve AR'yi tekrar başlatın.");
+                // Intro ekranını bir sonraki bacak için güncelle
+                setupIntroScreen(routeLegs[currentLegIndex]);
+                document.getElementById("intro-screen").style.display = "flex";
+                // Eylem butonunu "Hedefe Vardım" olarak değiştir (çünkü son bacak)
+                if (currentLegIndex === routeLegs.length - 1) {
+                    actionBtn.innerText = "🎉 Hedefe Vardım";
+                }
+            } else {
+                // Tüm bacaklar bitti (Nörolojiye varıldı)
+                alert("Tebrikler, hedefe ulaştınız!");
+                localStorage.removeItem('hastane_hedef');
+                window.location.href = "index.html";
+            }
         }
 
         function cancelNavigation() {
@@ -125,72 +139,87 @@
             }
         }
 
+        // Giriş ekranını mevcut bacağa göre ayarlar
+        function setupIntroScreen(legData) {
+            document.getElementById("intro-title").innerText = `📍 Durak Noktası ${legData.id}`;
+            document.getElementById("intro-desc").innerText = `Lütfen telefonu yeni gideceğiniz koridora doğru düz tutun.`;
+        }
+
+        // Mevcut bacağın oklarını çizer
+        function drawCurrentLeg() {
+            routeContainer.innerHTML = ""; // Eskileri temizle
+            const legData = routeLegs[currentLegIndex];
+            
+            document.getElementById("nav-instruction").innerText = legData.instruction;
+
+            legData.path.forEach((point, index) => {
+                const arrowEl = document.createElement('a-cone');
+                arrowEl.setAttribute('radius-bottom', '0.15');
+                arrowEl.setAttribute('height', '0.05');
+                arrowEl.setAttribute('segments-radial', '4');
+                // Baby Blue renk koda eklendi
+                arrowEl.setAttribute('color', legData.color); 
+                arrowEl.setAttribute('position', point.pos);
+                arrowEl.setAttribute('rotation', point.rot);
+                arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
+                arrowEl.setAttribute('animation', `property: material.opacity; from: 0.2; to: 1.0; dir: alternate; dur: 400; loop: true; delay: ${index * 150};`);
+                routeContainer.appendChild(arrowEl);
+            });
+
+            if ('speechSynthesis' in window) {
+                const speech = new SpeechSynthesisUtterance(legData.audioText);
+                speech.lang = 'tr-TR';
+                window.speechSynthesis.speak(speech);
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             const targetDestId = NavigationState.getDestination();
-            const sceneEl = document.querySelector('a-scene');
-            const routeContainer = document.getElementById("route-container");
-            const cameraEl = document.getElementById("ar-camera");
+            sceneEl = document.querySelector('a-scene');
+            routeContainer = document.getElementById("route-container");
+            actionBtn = document.getElementById("menu-action-btn");
 
             if (!targetDestId) return window.location.href = "index.html";
+
+            // Config'den bacaklı yapıyı al
             const routeData = NavConfig["durak1"].destinations[targetDestId];
+            if (!routeData || !routeData.legs) return;
+            
+            routeLegs = routeData.legs;
+            currentLegIndex = 0; // İlk bacakla başla
 
-            // 1. GİRİŞ BUTONU
+            // İlk bacak için ayarları yap
+            setupIntroScreen(routeLegs[currentLegIndex]);
+            if (routeLegs.length > 1) {
+                actionBtn.innerText = "↩️ Dönüşü Tamamladım";
+            } else {
+                actionBtn.innerText = "🎉 Hedefe Vardım";
+            }
+
+            // AR BAŞLAT BUTONU
             document.getElementById("my-custom-button").addEventListener('click', () => {
-                if (navigator.xr) { sceneEl.enterAR(); } else { alert("Cihazınız WebXR desteklemiyor."); }
-            });
-
-            //  AR BAŞLADIĞINDA (Oklar henüz çizilmez, Kalibrasyon menüsü açılır)
-            sceneEl.addEventListener('enter-vr', () => {
-                document.getElementById("intro-screen").style.display = "none";
-                document.getElementById("calibration-ui").style.display = "block"; // Kalibrasyon UI göster
-                document.getElementById("menu-container").style.display = "block";
-            });
-
-            // KULLANICI "ROTAYI BURAYA ÇİZ" BUTONUNA BASTIĞINDA
-            document.getElementById("draw-route-btn").addEventListener('click', () => {
-                // Kameranın o anki pozisyonunu ve açısını al
-                const camPos = cameraEl.getAttribute('position');
-                const camRot = cameraEl.getAttribute('rotation');
-
-                // Konteyneri kameranın tam o anki merkezine taşı, Y eksenini 0 (zemin) yap
-                routeContainer.setAttribute('position', `${camPos.x} 0 ${camPos.z}`);
-                // Konteyneri kameranın baktığı yöne doğru (sadece Y ekseninde) döndür
-                routeContainer.setAttribute('rotation', `0 ${camRot.y} 0`);
-
-                // Okları çiz
-                routeData.path.forEach((point, index) => {
-                    const arrowEl = document.createElement('a-cone');
-                    arrowEl.setAttribute('radius-bottom', '0.15');
-                    arrowEl.setAttribute('height', '0.05');
-                    arrowEl.setAttribute('segments-radial', '4');
-                    arrowEl.setAttribute('color', routeData.color);
-                    arrowEl.setAttribute('position', point.pos);
-                    arrowEl.setAttribute('rotation', point.rot);
-                    arrowEl.setAttribute('material', 'opacity: 0.2; transparent: true;');
-                    arrowEl.setAttribute('animation', `property: material.opacity; from: 0.2; to: 1.0; dir: alternate; dur: 400; loop: true; delay: ${index * 150};`);
-                    routeContainer.appendChild(arrowEl);
-                });
-
-                // Kalibrasyon menüsünü gizle, normal navigasyon barını göster
-                document.getElementById("calibration-ui").style.display = "none";
-                document.getElementById("top-navbar").style.display = "block";
-                document.getElementById("nav-instruction").innerText = routeData.instruction;
-
-                if ('speechSynthesis' in window) {
-                    const speech = new SpeechSynthesisUtterance(routeData.audioText);
-                    speech.lang = 'tr-TR';
-                    window.speechSynthesis.speak(speech);
+                if (navigator.xr) { 
+                    // AR moduna gir (local-floor sayesinde o anki yer 0 kabul edilir)
+                    sceneEl.enterAR(); 
+                } else { 
+                    alert("Cihazınız WebXR desteklemiyor."); 
                 }
             });
 
-            // AR'DEN ÇIKIŞ YAPILDIĞINDA
+            sceneEl.addEventListener('enter-vr', () => {
+                if (sceneEl.is('ar-mode')) {
+                    document.getElementById("intro-screen").style.display = "none";
+                    document.getElementById("top-navbar").style.display = "block";
+                    document.getElementById("menu-container").style.display = "block";
+                    // Sadece mevcut bacağı çiz 
+                    drawCurrentLeg();
+                }
+            });
+
             sceneEl.addEventListener('exit-vr', () => {
-                document.getElementById("intro-screen").style.display = "flex";
                 document.getElementById("top-navbar").style.display = "none";
                 document.getElementById("menu-container").style.display = "none";
-                document.getElementById("calibration-ui").style.display = "none";
                 document.getElementById("dropdown-menu").classList.remove("show");
-                routeContainer.innerHTML = ""; // Okları temizle
             });
         });
     </script>

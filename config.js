@@ -1,53 +1,36 @@
-// config.js
+// kaynaklı dosya yapısı baz alınarak güncellenmiştir.
 const NavConfig = {
     "durak1": {
-        locationName: "Ana Giriş",
+        locationName: "Başlangıç (Odam)",
         destinations: {
             "noroloji": {
-                // Rota 2 bacaktan (leg) oluşuyor
+                name: "Nöroloji",
                 legs: [
                     {
                         id: 1,
-                        instruction: "Oklar Takip Ediniz, Ok bitiminde yönünüzü sola dönünüz.⬆️",
-                        audioText: "Beş adım dümdüz ilerleyip bitişte yönünüzü sola dönünüz..",
-                        color: "#81D4FA", // Baby Blue
+                        instruction: "3 Adım Dümdüz İlerleyiniz ⬆️",
+                        audioText: "Üç adım dümdüz ilerleyiniz.",
+                        color: "#81D4FA",
                         path: [
-                            // 5 Adım İleri (Yaklaşık 3.5 metre)
                             { pos: "0 0.02 -0.7", rot: "-90 0 0" },
                             { pos: "0 0.02 -1.4", rot: "-90 0 0" },
-                            { pos: "0 0.02 -2.1", rot: "-90 0 0" },
-                            { pos: "0 0.02 -2.8", rot: "-90 0 0" },
-                            { pos: "0 0.02 -3.5", rot: "-90 0 0" } // 1. Bacağın Sonu (Viraj)
+                            { pos: "0 0.02 -2.1", rot: "-90 0 0" } // 2.1 metre
                         ]
                     },
                     {
                         id: 2,
-                        instruction: "Şimdi Sola Dönüp 3 Adım İlerleyiniz ⬆️",
-                        audioText: "Şimdi sola dönünüz ve üç adım ilerleyiniz.",
+                        instruction: "Sola Dönüp 5 Adım İlerleyiniz ⬅️",
+                        audioText: "Şimdi sola dönünüz ve beş adım ilerleyiniz.",
                         color: "#81D4FA",
-                         
-                        // sistem sıfırlandığı için senin o an baktığın sol koridor 
-                        // artık AR'nin YENİ "Dümdüz" (-Z) yönü olur. X eksenine girmeyiz!
                         path: [
-                            // 3 Adım İleri (Yaklaşık 2.1 metre)
                             { pos: "0 0.02 -0.7", rot: "-90 0 0" },
                             { pos: "0 0.02 -1.4", rot: "-90 0 0" },
-                            { pos: "0 0.02 -2.1", rot: "-90 0 0" } // Hedef
+                            { pos: "0 0.02 -2.1", rot: "-90 0 0" },
+                            { pos: "0 0.02 -2.8", rot: "-90 0 0" },
+                            { pos: "0 0.02 -3.5", rot: "-90 0 0" } // 3.5 metre
                         ]
                     }
-                ],
-                nextStop: "index.html"
-            },
-            
-            // --- Diğer Rotalar ---
-            "engelli_tuvaleti": {
-                legs: [{ id: 1, instruction: "Tuvalet için ilerleyin.", color: "#81D4FA", path: [{ pos: "0 0.02 -2", rot: "-90 0 0" }] }]
-            },
-            "laboratuvar": {
-                legs: [{ id: 1, instruction: "Laboratuvar için ilerleyin.", color: "#81D4FA", path: [{ pos: "0 0.02 -2", rot: "-90 0 0" }] }]
-            },
-            "danisma": {
-                legs: [{ id: 1, instruction: "Danışma için ilerleyin.", color: "#81D4FA", path: [{ pos: "0 0.02 -2", rot: "-90 0 0" }] }]
+                ]
             }
         }
     }

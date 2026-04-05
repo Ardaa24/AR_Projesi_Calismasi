@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hastane AR Navigasyon</title>
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <script src="config.js"></script>
+    <style>
+        :root { --accent: #81D4FA; --bg: #121212; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; }
+        
+        #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
+        
+        /* Modern Üst Bar */
+        #top-bar {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 85%; max-width: 400px; background: rgba(18, 18, 18, 0.9);
+            backdrop-filter: blur(10px); border: 2px solid var(--accent); border-radius: 20px;
+            padding: 15px; text-align: center; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+        .distance-text { font-size: 1.8rem; font-weight: bold; color: var(--accent); margin: 5px 0; }
+        .instruction-text { font-size: 1rem; color: #E0E0E0; }
+
+        /* Modern Hamburger Menü */
+        #menu-btn { position: absolute; top: 25px; right: 20px; background: rgba(18, 18, 18, 0.9); border: 1px solid var(--accent); color: white; border-radius: 12px; padding: 10px 15px; cursor: pointer; font-size: 1.5rem; pointer-events: auto; display: none; }
+        #menu-panel { display: none; position: absolute; top: 75px; right: 20px; width: 250px; background: rgba(18, 18, 18, 0.95); border: 1px solid #333; border-radius: 15px; pointer-events: auto; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .menu-action { width: 100%; padding: 12px; background: var(--accent); color: black; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+
+        /* Giriş Ekranı */
+        #intro-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; padding: 20px; box-sizing: border-box; }
+        .instruction-box { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; border: 2px solid var(--accent); text-align: center; max-width: 400px; width: 100%; }
+        #start-ar-btn { background: var(--accent); color: #000; font-size: 1.4rem; font-weight: bold; padding: 15px; border: none; border-radius: 12px; cursor: pointer; width: 100%; margin-top: 20px; }
+
+        .watermark { position: fixed; bottom: 8px; right: 12px; font-size: 0.75rem; color: rgba(255, 255, 255, 0.25); pointer-events: none; z-index: 10000; }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <div class="instruction-box">
+            <h2 id="target-title" style="color: var(--accent); margin-top:0;">Navigasyon</h2>
+            <p id="target-desc">Yükleniyor...</p>
+            <button id="start-ar-btn">🚀 AR'yi Başlat</button>
+        </div>
+    </div>
+
+    <div id="overlay-container">
+        <div id="top-bar">
+            <div class="instruction-text" id="ui-instruction">İlerleyiniz</div>
+            <div class="distance-text"><span id="ui-distance">--</span> m</div>
+        </div>
+
+        <button id="menu-btn" onclick="toggleMenu()">☰</button>
+        <div id="menu-panel">
+            <div style="font-weight: bold; color: var(--accent); margin-bottom: 10px;">Rota İşlemleri</div>
+            <button class="menu-action" id="next-leg-btn" onclick="handleLegComplete()">✅ Noktaya Vardım</button>
+            <button onclick="window.location.href='index.html'" style="width:100%; margin-top:10px; padding:10px; background:#444; color:white; border:none; border-radius:8px; cursor:pointer;">İptal Et</button>
+        </div>
+    </div>
+
+    <a-scene webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor, dom-overlay; overlayElement: #overlay-container;" vr-mode-ui="enabled: false">
+        <a-camera id="user-camera" position="0 1.6 0"></a-camera>
+        <a-entity id="route-container"></a-entity>
+    </a-scene>
+
+    <div class="watermark">by Arda24</div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let targetId = urlParams.get('hedef') || 'noroloji';
+        
+        let currentLegIndex = 0;
+        let routeLegs = NavConfig["durak1"].destinations[targetId].legs;
+        let sceneEl = document.querySelector('a-scene');
+        let routeContainer = document.getElementById("route-container");
+
+        document.getElementById("target-desc").innerText = `Hedef: ${NavConfig["durak1"].destinations[targetId].name}\nLütfen koridora düz bakın.`;
+
+        function toggleMenu() {
+            const panel = document.getElementById("menu-panel");
+            panel.style.display = panel.style.display === "block" ? "none" : "block";
+        }
+
+        document.getElementById("start-ar-btn").addEventListener('click', () => {
+            if (navigator.xr) sceneEl.enterAR();
+            else alert("WebXR desteği bulunamadı.");
+        });
+
+        sceneEl.addEventListener('enter-vr', () => {
+            document.getElementById("intro-screen").style.display = "none";
+            document.getElementById("top-bar").style.display = "block";
+            document.getElementById("menu-btn").style.display = "block";
+            drawCurrentLeg();
+        });
+
+        function drawCurrentLeg() {
+            routeContainer.innerHTML = "";
+            const leg = routeLegs[currentLegIndex];
+            document.getElementById("ui-instruction").innerText = leg.instruction;
+
+            const camPos = document.querySelector('#user-camera').getAttribute('position');
+            const camRot = document.querySelector('#user-camera').getAttribute('rotation');
+            routeContainer.setAttribute('position', `${camPos.x} 0 ${camPos.z}`);
+            routeContainer.setAttribute('rotation', `0 ${camRot.y} 0`);
+
+            leg.path.forEach((p, i) => {
+                const arrow = document.createElement('a-cone');
+                arrow.setAttribute('radius-bottom', '0.12');
+                arrow.setAttribute('height', '0.04');
+                arrow.setAttribute('segments-radial', '4');
+                arrow.setAttribute('color', leg.color);
+                arrow.setAttribute('position', p.pos);
+                arrow.setAttribute('rotation', p.rot);
+                arrow.setAttribute('material', 'opacity: 0.5; transparent: true;');
+                arrow.setAttribute('animation', `property: material.opacity; from: 0.2; to: 0.8; dir: alternate; dur: 500; loop: true; delay: ${i * 150};`);
+                routeContainer.appendChild(arrow);
+            });
+            startDistanceTracking();
+        }
+
+        function startDistanceTracking() {
+            if (AFRAME.components['distance-tracker']) delete AFRAME.components['distance-tracker'];
+            
+            AFRAME.registerComponent('distance-tracker', {
+                tick: function () {
+                    const camWorldPos = new THREE.Vector3();
+                    document.querySelector('#user-camera').object3D.getWorldPosition(camWorldPos);
+                    
+                    const lastArrow = routeContainer.lastChild;
+                    if (!lastArrow) return;
+                    
+                    const targetWorldPos = new THREE.Vector3();
+                    lastArrow.object3D.getWorldPosition(targetWorldPos);
+                    
+                    const dist = camWorldPos.distanceTo(targetWorldPos);
+                    document.getElementById("ui-distance").innerText = dist < 0.5 ? "0" : dist.toFixed(1);
+                }
+            });
+            sceneEl.setAttribute('distance-tracker', '');
+        }
+
+        function handleLegComplete() {
+            sceneEl.exitVR();
+            toggleMenu();
+            currentLegIndex++;
+
+            if (currentLegIndex < routeLegs.length) {
+                alert("Noktaya varıldı. Şimdi yeni yöne (sola) dönün ve AR'yi tekrar başlatın.");
+                document.getElementById("target-desc").innerText = routeLegs[currentLegIndex].instruction;
+                document.getElementById("intro-screen").style.display = "flex";
+                if (currentLegIndex === routeLegs.length - 1) document.getElementById("next-leg-btn").innerText = "🎉 Hedefe Vardım";
+            } else {
+                alert("Tebrikler! Hedefe ulaştınız.");
+                window.location.href = "index.html";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -99,10 +99,8 @@
             const leg = routeLegs[currentLegIndex];
             document.getElementById("ui-instruction").innerText = leg.instruction;
 
-            const camPos = document.querySelector('#user-camera').getAttribute('position');
-            const camRot = document.querySelector('#user-camera').getAttribute('rotation');
-            routeContainer.setAttribute('position', `${camPos.x} 0 ${camPos.z}`);
-            routeContainer.setAttribute('rotation', `0 ${camRot.y} 0`);
+            routeContainer.setAttribute('position', '0 0 0');
+            routeContainer.setAttribute('rotation', '0 0 0');
 
             leg.path.forEach((p, i) => {
                 const arrow = document.createElement('a-cone');

@@ -57,8 +57,11 @@
         </div>
     </div>
 
-    <a-scene webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay-container;" vr-mode-ui="enabled: false">
-        <a-camera id="user-camera" position="0 1.6 0"></a-camera>
+    <a-scene 
+        webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor, dom-overlay; overlayElement: #overlay-container;" 
+        renderer="alpha: true; colorManagement: true; antialias: true;"
+        vr-mode-ui="enabled: false">
+        <a-camera id="user-camera" position="0 0 0"></a-camera>
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
@@ -114,6 +117,10 @@
                     alert("Noktaya varıldı. Lütfen yeni yöne (sola) dönün, o koridora düz bakın ve AR'yi tekrar başlatın.");
                     document.getElementById("target-desc").innerText = routeLegs[currentLegIndex].instruction;
                     document.getElementById("intro-screen").style.display = "flex";
+                    
+                    // HTML Body arkaplanını eski haline getir
+                    document.body.style.background = "var(--bg)";
+                    
                     if (currentLegIndex === routeLegs.length - 1) {
                         document.getElementById("next-leg-btn").innerText = "🎉 Hedefe Vardım";
                     }
@@ -127,23 +134,28 @@
                 if (!isARSupported) return;
                 
                 if (sceneEl.hasLoaded) {
-                    sceneEl.enterAR();
+                    sceneEl.systems.webxr.sessionConfiguration.mode = 'immersive-ar';
+                    sceneEl.enterVR(); 
                 } else {
                     alert("3D Motor henüz yüklenmedi, 1 saniye bekleyip tekrar basın.");
                 }
             });
 
             sceneEl.addEventListener('enter-vr', () => {
-                document.getElementById("intro-screen").style.display = "none";
-                document.getElementById("top-bar").style.display = "block";
-                document.getElementById("menu-btn").style.display = "block";
-                
-                setTimeout(() => {
-                    drawCurrentLeg();
-                }, 1000);
+                if (sceneEl.is('ar-mode')) {
+                    document.body.style.background = "transparent";
+                    document.getElementById("intro-screen").style.display = "none";
+                    document.getElementById("top-bar").style.display = "block";
+                    document.getElementById("menu-btn").style.display = "block";
+                    
+                    setTimeout(() => {
+                        drawCurrentLeg();
+                    }, 1000);
+                }
             });
 
             sceneEl.addEventListener('exit-vr', () => {
+                document.body.style.background = "var(--bg)";
                 document.getElementById("top-bar").style.display = "none";
                 document.getElementById("menu-btn").style.display = "none";
                 document.getElementById("menu-panel").style.display = "none";
@@ -154,8 +166,7 @@
                 const leg = routeLegs[currentLegIndex];
                 document.getElementById("ui-instruction").innerText = leg.instruction;
 
-                // 🎯 KÖK ÇÖZÜM 3: Okların Arkada Çıkmasını Engelleyen Kuantum Sabitlemesi
-                // AR her başladığında telefonun "O Anki Düzlüğü" sistemin Kuzeyi (-Z) kabul edilir.
+                // Okları sıfır noktasına evrensel hizala
                 routeContainer.setAttribute('position', '0 0 0');
                 routeContainer.setAttribute('rotation', '0 0 0');
 

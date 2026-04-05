@@ -8,7 +8,7 @@
     <script src="config.js"></script>
     <style>
         :root { --accent: #81D4FA; --bg: #121212; }
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; transition: background 0.3s; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; }
         
         #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
         
@@ -30,9 +30,7 @@
         /* Giriş Ekranı */
         #intro-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; padding: 20px; box-sizing: border-box; }
         .instruction-box { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; border: 2px solid var(--accent); text-align: center; max-width: 400px; width: 100%; }
-        
-        #start-ar-btn { background: var(--accent); color: #000; font-size: 1.4rem; font-weight: bold; padding: 15px; border: none; border-radius: 12px; cursor: pointer; width: 100%; margin-top: 20px; transition: background 0.3s; }
-        #start-ar-btn:disabled { background: #555; color: #aaa; cursor: not-allowed; }
+        #start-ar-btn { background: var(--accent); color: #000; font-size: 1.4rem; font-weight: bold; padding: 15px; border: none; border-radius: 12px; cursor: pointer; width: 100%; margin-top: 20px; }
 
         .watermark { position: fixed; bottom: 8px; right: 12px; font-size: 0.75rem; color: rgba(255, 255, 255, 0.25); pointer-events: none; z-index: 10000; }
     </style>
@@ -42,8 +40,8 @@
     <div id="intro-screen">
         <div class="instruction-box">
             <h2 id="target-title" style="color: var(--accent); margin-top:0;">Navigasyon</h2>
-            <p id="target-desc">Sistem Hazırlanıyor...</p>
-            <button id="start-ar-btn" disabled>⏳ Lütfen Bekleyin...</button>
+            <p id="target-desc">Yükleniyor...</p>
+            <button id="start-ar-btn">🚀 AR'yi Başlat</button>
         </div>
     </div>
 
@@ -61,155 +59,118 @@
         </div>
     </div>
 
-    <a-scene 
-        webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay-container;" 
-        renderer="alpha: true; antialias: true;"
-        vr-mode-ui="enabled: false">
-        <a-camera id="user-camera" position="0 0 0"></a-camera>
+    <a-scene webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor, dom-overlay; overlayElement: #overlay-container;" vr-mode-ui="enabled: false">
+        <a-camera id="user-camera" position="0 1.6 0"></a-camera>
         <a-entity id="route-container"></a-entity>
     </a-scene>
 
     <div class="watermark">by Arda24</div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            let targetId = urlParams.get('hedef') || 'noroloji';
-            
-            if (!NavConfig["durak1"].destinations[targetId]) targetId = 'noroloji';
+        const urlParams = new URLSearchParams(window.location.search);
+        let targetId = urlParams.get('hedef') || 'noroloji';
+        
+        let currentLegIndex = 0;
+        let routeLegs = NavConfig["durak1"].destinations[targetId].legs;
+        let sceneEl = document.querySelector('a-scene');
+        let routeContainer = document.getElementById("route-container");
 
-            const routeData = NavConfig["durak1"].destinations[targetId];
-            let currentLegIndex = 0;
-            let routeLegs = routeData.legs;
-            
-            const sceneEl = document.querySelector('a-scene');
-            const routeContainer = document.getElementById("route-container");
-            const startBtn = document.getElementById("start-ar-btn");
+        document.getElementById("target-desc").innerText = `Hedef: ${NavConfig["durak1"].destinations[targetId].name}\nLütfen koridora düz bakın.`;
 
-            if (navigator.xr) {
-                navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-                    if (supported) {
-                        startBtn.innerText = "🚀 AR'yi Başlat";
-                        startBtn.disabled = false;
-                    } else {
-                        startBtn.innerText = "❌ AR Desteklenmiyor";
-                        document.getElementById("target-desc").innerText = "Cihazınız ARCore teknolojisini desteklemiyor.";
-                    }
-                });
-            } else {
-                startBtn.innerText = "❌ WebXR Bulunamadı";
-                document.getElementById("target-desc").innerText = "Lütfen tarayıcıdan HTTPS ile giriş yapın.";
-            }
+        function toggleMenu() {
+            const panel = document.getElementById("menu-panel");
+            panel.style.display = panel.style.display === "block" ? "none" : "block";
+        }
 
-            document.getElementById("target-desc").innerText = `Hedef: ${routeData.name || 'Hedef Noktası'}\nLütfen koridora düz bakın.`;
-
-            window.toggleMenu = function() {
-                const panel = document.getElementById("menu-panel");
-                panel.style.display = panel.style.display === "block" ? "none" : "block";
-            };
-
-            window.handleLegComplete = function() {
-                sceneEl.exitVR();
-                window.toggleMenu();
-                currentLegIndex++;
-
-                if (currentLegIndex < routeLegs.length) {
-                    alert("Noktaya varıldı. Lütfen yeni yöne (sola/sağa) dönün, o koridora düz bakın ve AR'yi tekrar başlatın.");
-                    document.getElementById("target-desc").innerText = routeLegs[currentLegIndex].instruction;
-                    document.getElementById("intro-screen").style.display = "flex";
-                    if (currentLegIndex === routeLegs.length - 1) document.getElementById("next-leg-btn").innerText = "🎉 Hedefe Vardım";
-                } else {
-                    alert("Tebrikler! Hedefe ulaştınız.");
-                    window.location.href = "index.html";
-                }
-            };
-
-            startBtn.addEventListener('click', () => {
-                if (sceneEl.hasLoaded) {
-                    sceneEl.enterAR();
-                } else {
-                    alert("3D Motor hazırlanıyor, lütfen 1 saniye bekleyip tekrar deneyin.");
-                }
-            });
-
-            sceneEl.addEventListener('enter-vr', () => {
-                // Kamera açıldığında arkadaki siyah CSS arkaplanını saydam yap
-                document.body.style.background = "transparent";
-                document.getElementById("intro-screen").style.display = "none";
-                document.getElementById("top-bar").style.display = "block";
-                document.getElementById("menu-btn").style.display = "block";
-                
-                setTimeout(() => {
-                    drawCurrentLeg();
-                }, 1500);
-            });
-
-            sceneEl.addEventListener('exit-vr', () => {
-                // AR'den çıkınca eski siyaha dön
-                document.body.style.background = "var(--bg)";
-                document.getElementById("top-bar").style.display = "none";
-                document.getElementById("menu-btn").style.display = "none";
-                document.getElementById("menu-panel").style.display = "none";
-            });
-
-            function drawCurrentLeg() {
-                routeContainer.innerHTML = "";
-                const leg = routeLegs[currentLegIndex];
-                document.getElementById("ui-instruction").innerText = leg.instruction;
-
-                const cameraObj = document.querySelector('#user-camera').object3D;
-                
-                //  Konteyneri tam olarak kameranın o anki konumuna (X, Z) taşı
-                routeContainer.object3D.position.set(cameraObj.position.x, 0, cameraObj.position.z);
-                
-               
-                const euler = new THREE.Euler().setFromQuaternion(cameraObj.quaternion, 'YXZ');
-                routeContainer.object3D.rotation.set(0, euler.y, 0);
-
-                leg.path.forEach((p, i) => {
-                    const arrow = document.createElement('a-cone');
-                    arrow.setAttribute('radius-bottom', '0.12');
-                    arrow.setAttribute('height', '0.04');
-                    arrow.setAttribute('segments-radial', '4');
-                    arrow.setAttribute('color', leg.color);
-                    arrow.setAttribute('position', p.pos);
-                    arrow.setAttribute('rotation', p.rot);
-                    arrow.setAttribute('material', 'opacity: 0.5; transparent: true;');
-                    arrow.setAttribute('animation', `property: material.opacity; from: 0.2; to: 0.8; dir: alternate; dur: 500; loop: true; delay: ${i * 150};`);
-                    routeContainer.appendChild(arrow);
-                });
-                startDistanceTracking();
-            }
-
-            function startDistanceTracking() {
-                if (AFRAME.components['distance-tracker']) delete AFRAME.components['distance-tracker'];
-                
-                AFRAME.registerComponent('distance-tracker', {
-                    tick: function () {
-                        const camObj = document.querySelector('#user-camera').object3D;
-                        const lastArrow = routeContainer.lastChild;
-                        if (!lastArrow) return;
-                        
-                        const camWorldPos = new THREE.Vector3();
-                        camObj.getWorldPosition(camWorldPos);
-                        
-                        const targetWorldPos = new THREE.Vector3();
-                        lastArrow.getWorldPosition(targetWorldPos);
-                        
-                        // Yüksekliği (Y eksenini) görmezden gelerek sadece Kuş Uçuşu (2D) mesafe ölçümü yap
-                        const dist2D = Math.hypot(camWorldPos.x - targetWorldPos.x, camWorldPos.z - targetWorldPos.z);
-                        
-                        if (dist2D < 0.6) {
-                            document.getElementById("ui-distance").innerText = "0";
-                            document.getElementById("ui-instruction").innerText = "📍 Noktaya Ulaştınız!";
-                        } else {
-                            document.getElementById("ui-distance").innerText = dist2D.toFixed(1);
-                        }
-                    }
-                });
-                sceneEl.setAttribute('distance-tracker', '');
-            }
+        document.getElementById("start-ar-btn").addEventListener('click', () => {
+            if (navigator.xr) sceneEl.enterAR();
+            else alert("WebXR desteği bulunamadı.");
         });
+
+        sceneEl.addEventListener('enter-vr', () => {
+            document.getElementById("intro-screen").style.display = "none";
+            document.getElementById("top-bar").style.display = "block";
+            document.getElementById("menu-btn").style.display = "block";
+            
+            // WebXR kamerasının odayı algılaması için 1 saniye bekleyip çizdiriyoruz
+            setTimeout(() => {
+                drawCurrentLeg();
+            }, 1000);
+        });
+
+        function drawCurrentLeg() {
+            routeContainer.innerHTML = "";
+            const leg = routeLegs[currentLegIndex];
+            document.getElementById("ui-instruction").innerText = leg.instruction;
+
+            const cameraObj = document.querySelector('#user-camera').object3D;
+            
+            // Konteyneri tam olarak kameranın bulunduğu koordinata  taşı
+            routeContainer.object3D.position.set(cameraObj.position.x, 0, cameraObj.position.z);
+            
+            // Kameranın baktığı yönü (Yaw/Y-ekseni açısını) hesapla ve konteyneri o yöne döndür.
+            const euler = new THREE.Euler().setFromQuaternion(cameraObj.quaternion, 'YXZ');
+            routeContainer.object3D.rotation.set(0, euler.y, 0);
+
+            leg.path.forEach((p, i) => {
+                const arrow = document.createElement('a-cone');
+                arrow.setAttribute('radius-bottom', '0.12');
+                arrow.setAttribute('height', '0.04');
+                arrow.setAttribute('segments-radial', '4');
+                arrow.setAttribute('color', leg.color);
+                arrow.setAttribute('position', p.pos);
+                arrow.setAttribute('rotation', p.rot);
+                arrow.setAttribute('material', 'opacity: 0.5; transparent: true;');
+                arrow.setAttribute('animation', `property: material.opacity; from: 0.2; to: 0.8; dir: alternate; dur: 500; loop: true; delay: ${i * 150};`);
+                routeContainer.appendChild(arrow);
+            });
+            startDistanceTracking();
+        }
+
+        function startDistanceTracking() {
+            if (AFRAME.components['distance-tracker']) delete AFRAME.components['distance-tracker'];
+            
+            AFRAME.registerComponent('distance-tracker', {
+                tick: function () {
+                    const camObj = document.querySelector('#user-camera').object3D;
+                    const lastArrow = routeContainer.lastChild;
+                    if (!lastArrow) return;
+                    
+                    const camWorldPos = new THREE.Vector3();
+                    camObj.getWorldPosition(camWorldPos);
+                    
+                    const targetWorldPos = new THREE.Vector3();
+                    lastArrow.getWorldPosition(targetWorldPos);
+                    
+                    // Sadece X (Sağ-Sol) ve Z (İleri-Geri) koordinatları arasındaki farkı hesapla
+                    const dist2D = Math.hypot(camWorldPos.x - targetWorldPos.x, camWorldPos.z - targetWorldPos.z);
+                    
+                    if (dist2D < 0.6) {
+                        document.getElementById("ui-distance").innerText = "0";
+                        document.getElementById("ui-instruction").innerText = "📍 Noktaya Ulaştınız!";
+                    } else {
+                        document.getElementById("ui-distance").innerText = dist2D.toFixed(1);
+                    }
+                }
+            });
+            sceneEl.setAttribute('distance-tracker', '');
+        }
+
+        function handleLegComplete() {
+            sceneEl.exitVR();
+            toggleMenu();
+            currentLegIndex++;
+
+            if (currentLegIndex < routeLegs.length) {
+                alert("Noktaya varıldı. Lütfen yeni yöne (sola) dönün, o koridora düz bakın ve AR'yi tekrar başlatın.");
+                document.getElementById("target-desc").innerText = routeLegs[currentLegIndex].instruction;
+                document.getElementById("intro-screen").style.display = "flex";
+                if (currentLegIndex === routeLegs.length - 1) document.getElementById("next-leg-btn").innerText = "🎉 Hedefe Vardım";
+            } else {
+                alert("Tebrikler! Hedefe ulaştınız.");
+                window.location.href = "index.html";
+            }
+        }
     </script>
 </body>
 </html>

@@ -91,11 +91,7 @@
             document.getElementById("intro-screen").style.display = "none";
             document.getElementById("top-bar").style.display = "block";
             document.getElementById("menu-btn").style.display = "block";
-            
-            // WebXR kamerasının odayı algılaması için 1 saniye bekleyip çizdiriyoruz
-            setTimeout(() => {
-                drawCurrentLeg();
-            }, 1000);
+            drawCurrentLeg();
         });
 
         function drawCurrentLeg() {
@@ -103,14 +99,8 @@
             const leg = routeLegs[currentLegIndex];
             document.getElementById("ui-instruction").innerText = leg.instruction;
 
-            const cameraObj = document.querySelector('#user-camera').object3D;
-            
-            // Konteyneri tam olarak kameranın bulunduğu koordinata  taşı
-            routeContainer.object3D.position.set(cameraObj.position.x, 0, cameraObj.position.z);
-            
-            // Kameranın baktığı yönü (Yaw/Y-ekseni açısını) hesapla ve konteyneri o yöne döndür.
-            const euler = new THREE.Euler().setFromQuaternion(cameraObj.quaternion, 'YXZ');
-            routeContainer.object3D.rotation.set(0, euler.y, 0);
+            routeContainer.setAttribute('position', '0 0 0');
+            routeContainer.setAttribute('rotation', '0 0 0');
 
             leg.path.forEach((p, i) => {
                 const arrow = document.createElement('a-cone');
@@ -132,25 +122,17 @@
             
             AFRAME.registerComponent('distance-tracker', {
                 tick: function () {
-                    const camObj = document.querySelector('#user-camera').object3D;
+                    const camWorldPos = new THREE.Vector3();
+                    document.querySelector('#user-camera').object3D.getWorldPosition(camWorldPos);
+                    
                     const lastArrow = routeContainer.lastChild;
                     if (!lastArrow) return;
                     
-                    const camWorldPos = new THREE.Vector3();
-                    camObj.getWorldPosition(camWorldPos);
-                    
                     const targetWorldPos = new THREE.Vector3();
-                    lastArrow.getWorldPosition(targetWorldPos);
+                    lastArrow.object3D.getWorldPosition(targetWorldPos);
                     
-                    // Sadece X (Sağ-Sol) ve Z (İleri-Geri) koordinatları arasındaki farkı hesapla
-                    const dist2D = Math.hypot(camWorldPos.x - targetWorldPos.x, camWorldPos.z - targetWorldPos.z);
-                    
-                    if (dist2D < 0.6) {
-                        document.getElementById("ui-distance").innerText = "0";
-                        document.getElementById("ui-instruction").innerText = "📍 Noktaya Ulaştınız!";
-                    } else {
-                        document.getElementById("ui-distance").innerText = dist2D.toFixed(1);
-                    }
+                    const dist = camWorldPos.distanceTo(targetWorldPos);
+                    document.getElementById("ui-distance").innerText = dist < 0.5 ? "0" : dist.toFixed(1);
                 }
             });
             sceneEl.setAttribute('distance-tracker', '');
@@ -162,7 +144,7 @@
             currentLegIndex++;
 
             if (currentLegIndex < routeLegs.length) {
-                alert("Noktaya varıldı. Lütfen yeni yöne (sola) dönün, o koridora düz bakın ve AR'yi tekrar başlatın.");
+                alert("Noktaya varıldı. Şimdi yeni yöne (sola) dönün ve AR'yi tekrar başlatın.");
                 document.getElementById("target-desc").innerText = routeLegs[currentLegIndex].instruction;
                 document.getElementById("intro-screen").style.display = "flex";
                 if (currentLegIndex === routeLegs.length - 1) document.getElementById("next-leg-btn").innerText = "🎉 Hedefe Vardım";

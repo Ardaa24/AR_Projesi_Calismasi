@@ -15,15 +15,12 @@ function initSettings() {
     const header = document.querySelector('.settings-header');
 
     if (!btnToggle || !btnClose || !_settingsBackdrop || !_settingsDrawer) return;
-    
-    const backdrop = _settingsBackdrop;
-    const drawer = _settingsDrawer;
 
     // Aç
     btnToggle.addEventListener('click', openSettingsDrawer);
     // Kapat
     btnClose.addEventListener('click', closeSettingsDrawer);
-    backdrop.addEventListener('click', closeSettingsDrawer);
+    _settingsBackdrop.addEventListener('click', closeSettingsDrawer);
 
     // Swipe down to close gesture
     let startY = 0;
@@ -34,7 +31,7 @@ function initSettings() {
         startY = e.touches[0].clientY;
         currentY = startY;
         isDragging = true;
-        drawer.style.transition = 'none';
+        _settingsDrawer.style.transition = 'none';
     };
 
     const onTouchMove = (e) => {
@@ -42,7 +39,7 @@ function initSettings() {
         currentY = e.touches[0].clientY;
         const diff = currentY - startY;
         if (diff > 0) {
-            drawer.style.transform = `translateY(${diff}px)`;
+            _settingsDrawer.style.transform = `translateY(${diff}px)`;
             if (e.cancelable) e.preventDefault();
         }
     };
@@ -50,12 +47,12 @@ function initSettings() {
     const onTouchEnd = () => {
         if (!isDragging) return;
         isDragging = false;
-        drawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
+        _settingsDrawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
         const diff = currentY - startY;
         if (diff > 80) {
             closeSettingsDrawer();
         } else {
-            drawer.style.transform = 'translateY(0)';
+            _settingsDrawer.style.transform = 'translateY(0)';
         }
         startY = 0;
         currentY = 0;
@@ -77,14 +74,11 @@ function initSettings() {
 }
 
 function openSettingsDrawer() {
-    const backdrop = _settingsBackdrop;
-    const drawer = _settingsDrawer;
-    
-    drawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
-    backdrop.style.display = 'block';
+    _settingsDrawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
+    _settingsBackdrop.style.display = 'block';
     setTimeout(() => {
-        backdrop.classList.add('visible');
-        drawer.style.transform = 'translateY(0)';
+        _settingsBackdrop.classList.add('visible');
+        _settingsDrawer.style.transform = 'translateY(0)';
     }, 10);
 
     updatePermissionBadges();
@@ -95,20 +89,17 @@ function openSettingsDrawer() {
 
     // Rerender Lucide icons inside settings drawer
     if (window.lucide) {
-        lucide.createIcons({ root: drawer });
+        lucide.createIcons({ root: _settingsDrawer });
     }
 }
 
 function closeSettingsDrawer() {
-    const backdrop = _settingsBackdrop;
-    const drawer = _settingsDrawer;
-    
-    drawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
-    drawer.style.transform = 'translateY(100%)';
-    backdrop.classList.remove('visible');
+    _settingsDrawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
+    _settingsDrawer.style.transform = 'translateY(100%)';
+    _settingsBackdrop.classList.remove('visible');
     
     setTimeout(() => {
-        backdrop.style.display = 'none';
+        _settingsBackdrop.style.display = 'none';
     }, 300);
 }
 

@@ -4,37 +4,49 @@
  * Tarsus Devlet Hastanesi AR Navigasyon Sistemi
  */
 
-/* ── DOM Referansları (bir kez alınır) ── */
-const _dom = {
-    scene:       () => document.getElementById('ar-scene'),
-    overlay:     () => document.getElementById('ar-overlay'),
-    infoScreen:  () => document.getElementById('ar-info-screen'),
-    doneScreen:  () => document.getElementById('ar-done'),
-    arrows:      () => document.getElementById('ar-arrows'),
-    cam:         () => document.getElementById('ar-cam'),
-    arrivedBtn:  () => document.getElementById('ar-arrived-btn'),
-    turnOverlay: () => document.getElementById('ar-turn'),
-    topHud:      () => document.getElementById('ar-top-hud'),
-    bottomPanel: () => document.getElementById('ar-bottom'),
-    hudArrow:    () => document.getElementById('ar-hud-arrow'),
-    hudDist:     () => document.getElementById('ar-dist'),
-    hudTime:     () => document.getElementById('ar-time'),
-    hudNcLabel:  () => document.getElementById('ar-nc-label'),
-    hudNcAction: () => document.getElementById('ar-nc-action'),
-    hudNcIcon:   () => document.getElementById('ar-nc-icon'),
-    turnIcon:    () => document.getElementById('ar-turn-icon'),
-    turnText:    () => document.getElementById('ar-turn-text'),
-    turnDist:    () => document.getElementById('ar-turn-dist')
-};
+/* ── DOM Referansları (DOMContentLoaded'da başlatılır) ── */
+let _dom = {};
+
+function _initDom() {
+    _dom.scene          = document.getElementById('ar-scene');
+    _dom.overlay        = document.getElementById('ar-overlay');
+    _dom.infoScreen     = document.getElementById('ar-info-screen');
+    _dom.doneScreen     = document.getElementById('ar-done');
+    _dom.arrows         = document.getElementById('ar-arrows');
+    _dom.cam            = document.getElementById('ar-cam');
+    _dom.arrivedBtn     = document.getElementById('ar-arrived-btn');
+    _dom.arArriveLabel  = document.getElementById('ar-arrive-label');
+    _dom.arDest         = document.getElementById('ar-dest');
+    _dom.turnOverlay    = document.getElementById('ar-turn');
+    _dom.topHud         = document.getElementById('ar-top-hud');
+    _dom.bottomPanel    = document.getElementById('ar-bottom');
+    _dom.hudArrow       = document.getElementById('ar-hud-arrow');
+    _dom.hudDist        = document.getElementById('ar-dist');
+    _dom.hudTime        = document.getElementById('ar-time');
+    _dom.hudNcLabel     = document.getElementById('ar-nc-label');
+    _dom.hudNcAction    = document.getElementById('ar-nc-action');
+    _dom.hudNcIcon      = document.getElementById('ar-nc-icon');
+    _dom.turnIcon       = document.getElementById('ar-turn-icon');
+    _dom.turnText       = document.getElementById('ar-turn-text');
+    _dom.turnDist       = document.getElementById('ar-turn-dist');
+}
 
 /* ── Sabitler ── */
-const ARROW_SPACING_M          = 0.8;  
-const ARRIVAL_THRESHOLD        = 0.5;   // Otomatik varış eşiği (metre)
-const TURN_WARN_DISTANCE       = 2.5;   // Dönüş uyarısı başlama mesafesi (metre)
-const GRACE_PERIOD_MS          = 2000;  // AR açıldıktan sonra varış sayılmaz
-const NEXT_SECTION_UNLOCK_DIST = 0.5;   // Sonraki Bölüm butonu kilit açma mesafesi
-const TURN_KEYWORDS_LEFT       = ['sola'];
-const TURN_KEYWORDS_RIGHT      = ['sağa'];
+const ARROW_SPACING_M           = 0.8;
+const ARRIVAL_THRESHOLD         = 0.5;   // Otomatik varış eşiği (metre)
+const TURN_WARN_DISTANCE        = 2.5;   // Dönüş uyarısı başlama mesafesi (metre)
+const GRACE_PERIOD_MS           = 2000;  // AR açıldıktan sonra varış sayılmaz
+const NEXT_SECTION_UNLOCK_DIST  = 0.5;   // Sonraki Bölüm butonu kilit açma mesafesi
+const TURN_KEYWORDS_LEFT        = ['sola'];
+const TURN_KEYWORDS_RIGHT       = ['sağa'];
+
+/* ── Fiziksel / Geometri Sabitleri ── */
+const CAMERA_HEIGHT_THRESHOLD   = 0.8;   // local-floor aktifse min. kamera yüksekliği (m)
+const AVG_HUMAN_HEIGHT_M        = 1.5;   // Ortalama insan boyu fallback (m)
+const GROUND_ARROW_OFFSET       = 0.01;  // Z-fighting önleme: ok zemin üstü boşluk (m)
+const CHEVRON_GROUND_INIT       = 0.02;  // Chevron oluşturma baz zemin boşluğu (m)
+const COMPASS_CORRECTION_DEG    = 135;   // Pusula ters görünüm düzeltmesi: 180° − 45°
+const ARROW_CULL_DISTANCE_M     = 10;    // Frustum culling: bu mesafenin ötesi gizlenir (m)
 
 /* ── Pusula Sarmal Çözücü (Anti-Spinning) ── */
 let _lastCompassDeg = 0;
@@ -184,7 +196,7 @@ function _doStartAR(route) {
 }
 
 function _enterAR() {
-    const scene = _dom.scene();
+    const scene = _dom.scene;
     scene.classList.add('ar-active');
     
     // WebGL render döngüsünü aktifleştir
@@ -217,12 +229,13 @@ function _enterAR() {
    A-FRAME OLAYLARI
 ════════════════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
-    const scene = _dom.scene();
+    _initDom(); // DOM referanslarını önbelleğe al
+    const scene = _dom.scene;
 
     scene.addEventListener('enter-vr', _onEnterAR);
     scene.addEventListener('exit-vr',  _onExitAR);
     
-    // Sayfa ilk yüklendiğinde WebGL render döngüsünü durdurarak GPU ve pil tasarrufu sağla
+    // Sayfa ilk yüklenдиğinde WebGL render döngüsünü durdurarak GPU ve pil tasarrufu sağla
     scene.addEventListener('loaded', () => {
         if (scene.pause) scene.pause();
     });
@@ -238,7 +251,7 @@ function _onEnterAR() {
     AppState.arStartTime = AppState.arStartTime || Date.now();
     document.body.style.background = 'transparent';
 
-    const scene = _dom.scene();
+    const scene = _dom.scene;
     if (scene.is('ar-mode') && scene.renderer.xr.getSession()) {
         const xrSession = scene.renderer.xr.getSession();
         
@@ -258,18 +271,16 @@ function _onEnterAR() {
     }
 
     /* Overlay + HUD göster */
-    _dom.infoScreen().classList.remove('visible');
-    _dom.overlay().classList.add('ar-active');
-    _dom.topHud().style.display    = 'flex';
-    _dom.bottomPanel().style.display = 'flex';
+    _dom.infoScreen.classList.remove('visible');
+    _dom.overlay.classList.add('ar-active');
+    _dom.topHud.style.display    = 'flex';
+    _dom.bottomPanel.style.display = 'flex';
     
     // Show HUD arrow
-    const hudArrow = _dom.hudArrow();
-    if(hudArrow) hudArrow.style.display = 'block';
+    if (_dom.hudArrow) _dom.hudArrow.style.display = 'block';
 
     _refreshHUDFromTick(Infinity, 0); // İlk HUD güncellemesi
-    const arDest = document.getElementById('ar-dest');
-    if (arDest) arDest.textContent = AppState.activeRoute.name;
+    if (_dom.arDest) _dom.arDest.textContent = AppState.activeRoute.name;
     _updateArrivedBtn();
 
     setTimeout(_drawArrows, 1500);
@@ -285,68 +296,74 @@ function _onExitAR() {
         _hitTestSource = null;
     }
 
-    _dom.topHud().style.display    = 'none';
-    _dom.bottomPanel().style.display = 'none';
-    _dom.turnOverlay().classList.remove('visible');
-    const hudArrow = _dom.hudArrow();
-    if(hudArrow) hudArrow.style.display = 'none';
-    _dom.arrows().innerHTML = '';
-    _dom.scene().classList.remove('ar-active');
-    _dom.overlay().classList.remove('ar-active');
+    _dom.topHud.style.display    = 'none';
+    _dom.bottomPanel.style.display = 'none';
+    _dom.turnOverlay.classList.remove('visible');
+    if (_dom.hudArrow) _dom.hudArrow.style.display = 'none';
+    _dom.arrows.innerHTML = '';
+    _dom.scene.classList.remove('ar-active');
+    _dom.overlay.classList.remove('ar-active');
     
     // WebGL render döngüsünü durdurarak GPU yırtılmalarını önle ve pil tasarrufu sağla
-    const scene = _dom.scene();
-    if (scene.pause) scene.pause();
+    if (_dom.scene.pause) _dom.scene.pause();
 }
 
+/* HUD ikon değişimini izle — aynı ikon varken SVG yeniden parse edilmez */
+let _lastHudIconName = '';
+
 function _refreshHUDFromTick(distToTurn, remain) {
-    const nextLeg = AppState.arLegs[AppState.legIdx + 1];
-    const iconEl   = _dom.hudNcIcon();
-    const labelEl  = _dom.hudNcLabel();
-    const actionEl = _dom.hudNcAction();
-    const distEl   = _dom.hudDist();
-    const timeEl   = _dom.hudTime();
+    const nextLeg  = AppState.arLegs[AppState.legIdx + 1];
+    const labelEl  = _dom.hudNcLabel;
+    const actionEl = _dom.hudNcAction;
+    const iconEl   = _dom.hudNcIcon;
+    const distEl   = _dom.hudDist;
+    const timeEl   = _dom.hudTime;
 
     if (distEl) distEl.textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
     if (labelEl) labelEl.textContent = remain < 1 ? '<1m kaldı' : `${Math.round(remain)}m kaldı`;
-    
+
     const estSec = Math.ceil(remain * 1.5);
     if (timeEl) timeEl.textContent = estSec >= 60 ? `${Math.ceil(estSec / 60)}dk` : `${estSec}sn`;
 
     if (!iconEl || !actionEl) return;
 
+    /* Yön talimatı ve ikon adını belirle */
+    let newIconName    = 'arrow-up';
+    let newActionText  = 'Düz devam edin';
+
     if (nextLeg && nextLeg.type === 'info') {
-        actionEl.textContent = nextLeg.title || 'Bilgi Ekranı';
-        iconEl.innerHTML = '<i data-lucide="info" width="24" height="24"></i>';
+        newIconName   = 'info';
+        newActionText = nextLeg.title || 'Bilgi Ekranı';
     } else if (nextLeg && nextLeg.instruction) {
         const ins = (nextLeg.instruction || nextLeg.title || '').toLowerCase();
         if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
-            actionEl.textContent = "Sola dönüp ilerleyin";
-            iconEl.innerHTML = '<i data-lucide="corner-up-left" width="24" height="24"></i>';
+            newIconName   = 'corner-up-left';
+            newActionText = 'Sola dönüp ilerleyin';
         } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
-            actionEl.textContent = "Sağa dönüp ilerleyin";
-            iconEl.innerHTML = '<i data-lucide="corner-up-right" width="24" height="24"></i>';
-        } else {
-            actionEl.textContent = "Düz devam edin";
-            iconEl.innerHTML = '<i data-lucide="arrow-up" width="24" height="24"></i>';
+            newIconName   = 'corner-up-right';
+            newActionText = 'Sağa dönüp ilerleyin';
         }
-    } else {
-        actionEl.textContent = "Hedef";
-        iconEl.innerHTML = '<i data-lucide="map-pin" width="24" height="24"></i>';
+    } else if (!nextLeg) {
+        newIconName   = 'map-pin';
+        newActionText = 'Hedef';
     }
-    
-    if (window.lucide) {
-        lucide.createIcons({ root: iconEl });
+
+    actionEl.textContent = newActionText;
+
+    /* Sadece ikon değiştiğinde SVG yeniden parse et (30 FPS performans koruması) */
+    if (newIconName !== _lastHudIconName) {
+        _lastHudIconName = newIconName;
+        iconEl.innerHTML = `<i data-lucide="${newIconName}" width="24" height="24"></i>`;
+        if (window.lucide) lucide.createIcons({ root: iconEl });
     }
 }
 
 function _updateArrivedBtn() {
-    const btn = _dom.arrivedBtn();
+    const btn = _dom.arrivedBtn;
     if (!btn) return;
 
-    const isLast  = AppState.legIdx === AppState.arLegs.length - 1;
-    const label   = document.getElementById('ar-arrive-label');
-    if (label) label.textContent = isLast ? 'Hedefe Vardım' : 'Sonraki Bölüm';
+    const isLast = AppState.legIdx === AppState.arLegs.length - 1;
+    if (_dom.arArriveLabel) _dom.arArriveLabel.textContent = isLast ? 'Hedefe Vardım' : 'Sonraki Bölüm';
     btn.setAttribute('aria-label', isLast ? 'Hedefe vardım' : 'Sonraki bölüme geç');
 
     // Her yeni bacakta kilit sıfırlanır (0.5m'de JS açacak)
@@ -354,11 +371,11 @@ function _updateArrivedBtn() {
 }
 
 /* ════════════════════════════════════════════════════
-   VARIL BUTONU KİLTİ YONETIMi
+   VARIL BUTONU KİLTİ YONETİMı
    Grace period dışında, distToTurn <= 0.5m olduğunda çağrılır.
 ════════════════════════════════════════════════════ */
 function _setArrivedBtnLocked(locked) {
-    const btn = _dom.arrivedBtn();
+    const btn = _dom.arrivedBtn;
     if (!btn) return;
     if (locked) {
         btn.disabled = true;
@@ -374,20 +391,17 @@ function _setArrivedBtnLocked(locked) {
 ════════════════════════════════════════════════════ */
 function _createChevron(px, pz, angleDeg, indexOffset) {
     const el = document.createElement('a-entity');
-    const yPos = _groundY + 0.02; // Z-fighting önlemek ve hafif havada zarif durması için
+    const yPos = _groundY + CHEVRON_GROUND_INIT;
     
     el.setAttribute('position', `${px} ${yPos} ${pz}`);
-    // Bileşenimiz native A-Frame transformasyon sistemini kullanır, bu yüzden yere TAM oturur.
     el.setAttribute('rotation', `0 ${angleDeg} 0`);
-    
-    // Özel 3D Extruded Geometry Bileşeni
     el.setAttribute('google-chevron', '');
 
     return { el, baseY: yPos, index: indexOffset };
 }
 
 function _drawArrows() {
-    const arrowsEl = _dom.arrows();
+    const arrowsEl = _dom.arrows;
     arrowsEl.innerHTML = '';
     _activeArrows = [];
 
@@ -468,17 +482,16 @@ function _tick(time) {
     }
     _lastTickTime = time;
 
-    const cam = _dom.cam().object3D;
+    const cam = _dom.cam.object3D;
     cam.getWorldPosition(_camPosCache);
     
     // 1. Kusursuz Zemin Kilidi (Hit-Test kaldırıldı, Donanımsal Y=0 baz alınır)
-    const scene = _dom.scene();
-    if (scene.is('ar-mode')) {
-        // local-floor aktifse kamera 0.8 metrenin üzerindedir (fiziksel boy).
-        if (_camPosCache.y > 0.8) {
+    if (_dom.scene.is('ar-mode')) {
+        // local-floor aktifse kamera CAMERA_HEIGHT_THRESHOLD metrenin üzerindedir (fiziksel boy).
+        if (_camPosCache.y > CAMERA_HEIGHT_THRESHOLD) {
             _groundY = 0; // %100 Zemine oturur, Lazer okuma hatası bitti.
         } else {
-            _groundY = _camPosCache.y - 1.5; // Fallback
+            _groundY = _camPosCache.y - AVG_HUMAN_HEIGHT_M; // Fallback
         }
     }
     
@@ -498,11 +511,11 @@ function _tick(time) {
             }
             
             // Jitter'ı engellemek için okları dümdüz _groundY'ye çak
-            arrow.el.object3D.position.y = _groundY + 0.01;
+            arrow.el.object3D.position.y = _groundY + GROUND_ARROW_OFFSET;
 
             // Frustum Culling
             const dist = Math.hypot(_camPosCache.x - arrow.el.object3D.position.x, _camPosCache.z - arrow.el.object3D.position.z);
-            arrow.el.object3D.visible = (dist < 10);
+            arrow.el.object3D.visible = (dist < ARROW_CULL_DISTANCE_M);
         }
     }
 
@@ -523,14 +536,13 @@ function _tick(time) {
         const relativeAngle = targetAngleRad - camRotY;
         const rawDeg = THREE.MathUtils.radToDeg(relativeAngle);
         
-        // Pusula tam tersini gösterdiği için 180 derece (135 = 180 - 45) ekleyerek tersine çevirdik.
-        const targetDeg = rawDeg + 135;
+        // COMPASS_CORRECTION_DEG: pusula tam tersini gösterdiği için 180° - 45° = 135° düzeltme
+        const targetDeg = rawDeg + COMPASS_CORRECTION_DEG;
         
         // Unwrap algoritması ile 360 derece fırıldak dönmesini (Spinning) engelliyoruz
         _lastCompassDeg = _unwrapAngle(targetDeg, _lastCompassDeg);
         
-        const arrowEl = _dom.hudArrow();
-        if (arrowEl) arrowEl.style.transform = `rotate(${_lastCompassDeg}deg)`; 
+        if (_dom.hudArrow) _dom.hudArrow.style.transform = `rotate(${_lastCompassDeg}deg)`;
     }
 
     /* Gerçek hedefe olan (bacak bitişi) uzaklık */
@@ -568,7 +580,7 @@ function _tick(time) {
         if (!_arrivalDebounceId) {
             _arrivalDebounceId = setTimeout(() => {
                 cancelAnimationFrame(AppState.tickRafId);
-                _dom.scene().exitVR();
+                _dom.scene.exitVR();
                 _showDone();
                 _arrivalDebounceId = null;
             }, 500); // 500ms debounce
@@ -627,11 +639,11 @@ function _hideTurn() { _dom.turnOverlay().classList.remove('visible'); }
    BİLGİ EKRANI (Asansör vb.)
 ════════════════════════════════════════════════════ */
 function _showInfoScreen(leg) {
-    const screen = _dom.infoScreen();
+    const screen = _dom.infoScreen;
     const iconWrapper = document.getElementById('ais-step-icon');
     iconWrapper.innerHTML = `<i data-lucide="${leg.icon || 'info'}" width="38" height="38"></i>`;
-    if (window.lucide) lucide.createIcons({root: iconWrapper});
-    document.getElementById('ais-title').textContent     = leg.title || 'Bilgi';
+    if (window.lucide) lucide.createIcons({ root: iconWrapper });
+    document.getElementById('ais-title').textContent = leg.title || 'Bilgi';
 
     const ul = document.getElementById('ais-lines');
     ul.innerHTML = '';
@@ -653,7 +665,7 @@ function _showInfoScreen(leg) {
 
 /* "Devam Et" butonu tıklaması (HTML'den çağrılır) */
 function onInfoContinue() {
-    _dom.infoScreen().classList.remove('visible');
+    _dom.infoScreen.classList.remove('visible');
     AppState.legIdx++;
 
     if (AppState.legIdx >= AppState.arLegs.length) {
@@ -671,7 +683,7 @@ function onInfoContinue() {
 /* "Ulaştım" butonu tıklaması (HTML'den çağrılır) */
 function onArrived() {
     cancelAnimationFrame(AppState.tickRafId);
-    _dom.scene().exitVR();
+    _dom.scene.exitVR();
     _hideTurn();
 
     /* Haptic: varış onayı */
@@ -735,12 +747,12 @@ function _showDone() {
     /* Haptic: başarı */
     vibrate([150, 100, 150, 100, 300]);
 
-    _dom.doneScreen().classList.add('visible');
+    _dom.doneScreen.classList.add('visible');
 }
 
 /* ── Ana Menüye Dön (HTML'den çağrılır) ── */
 function returnToRoutes() {
-    _dom.doneScreen().classList.remove('visible');
+    _dom.doneScreen.classList.remove('visible');
     renderList();
     showScreen('s-routes');
 }
@@ -748,8 +760,8 @@ function returnToRoutes() {
 /* ── AR'dan çık (Geri butonu, HTML'den çağrılır) ── */
 function exitARToRoutes() {
     cancelAnimationFrame(AppState.tickRafId);
-    _dom.scene().exitVR();
-    _dom.infoScreen().classList.remove('visible');
+    _dom.scene.exitVR();
+    _dom.infoScreen.classList.remove('visible');
     renderList();
     showScreen('s-routes');
 }

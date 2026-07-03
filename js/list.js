@@ -61,11 +61,10 @@ function _createRouteCard(route) {
 }
 
 /* ── Kategori Başlığı Fabrikası (DRY) ── */
-function _createCategoryLabel(text, isFirst) {
+function _createCategoryLabel(text) {
     const el = document.createElement('div');
     el.className = 'category-label';
     el.textContent = text;
-    if (isFirst) el.style.marginTop = '8px';
     return el;
 }
 
@@ -94,7 +93,7 @@ function renderList(filter = '') {
         if (!routes.length) return;
 
         totalVisible += routes.length;
-        listEl.appendChild(_createCategoryLabel(cat, totalVisible === routes.length));
+        listEl.appendChild(_createCategoryLabel(cat));
         routes.forEach(route => listEl.appendChild(_createRouteCard(route)));
     });
 
@@ -114,11 +113,8 @@ function renderList(filter = '') {
 /* ── Arama Başlat ── */
 function initSearch() {
     const input = document.getElementById('search-input');
-    const wrap  = document.querySelector('.search-wrap');
 
-    input.addEventListener('input',  e => renderList(e.target.value));
-    input.addEventListener('focus',  () => wrap.style.borderColor = 'var(--primary)');
-    input.addEventListener('blur',   () => wrap.style.borderColor = '');
+    input.addEventListener('input', e => renderList(e.target.value));
 
     initVoiceSearch(input);
 }

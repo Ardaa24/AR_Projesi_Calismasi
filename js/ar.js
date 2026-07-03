@@ -317,22 +317,26 @@ function _refreshHUDFromTick(distToTurn, remain) {
 
     if (nextLeg && nextLeg.type === 'info') {
         actionEl.textContent = nextLeg.title || 'Bilgi Ekranı';
-        iconEl.textContent = "ℹ️";
+        iconEl.innerHTML = '<i data-lucide="info" width="24" height="24"></i>';
     } else if (nextLeg && nextLeg.instruction) {
         const ins = (nextLeg.instruction || nextLeg.title || '').toLowerCase();
         if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
-            actionEl.textContent = "Sola Dönülecek";
-            iconEl.textContent = "↖";
+            actionEl.textContent = "Sola dönüp ilerleyin";
+            iconEl.innerHTML = '<i data-lucide="corner-up-left" width="24" height="24"></i>';
         } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
-            actionEl.textContent = "Sağa Dönülecek";
-            iconEl.textContent = "↗";
+            actionEl.textContent = "Sağa dönüp ilerleyin";
+            iconEl.innerHTML = '<i data-lucide="corner-up-right" width="24" height="24"></i>';
         } else {
-            actionEl.textContent = "Düz Devam";
-            iconEl.textContent = "⬆";
+            actionEl.textContent = "Düz devam edin";
+            iconEl.innerHTML = '<i data-lucide="arrow-up" width="24" height="24"></i>';
         }
     } else {
         actionEl.textContent = "Hedef";
-        iconEl.textContent = "📍";
+        iconEl.innerHTML = '<i data-lucide="map-pin" width="24" height="24"></i>';
+    }
+    
+    if (window.lucide) {
+        lucide.createIcons({ root: iconEl });
     }
 }
 

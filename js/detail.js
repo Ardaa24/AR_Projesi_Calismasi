@@ -45,6 +45,33 @@ function _infoRow(icon, label, value) {
         </div>`;
 }
 
+/* ── Ortak Bölümler (DRY) ── */
+function _buildLocationSection(route) {
+    return `
+        <!-- Konum Bilgileri -->
+        <div class="section-card" role="region" aria-label="Konum bilgileri">
+            <div class="section-label">Konum Bilgileri</div>
+            ${_infoRow('<i data-lucide="building" width="18" height="18"></i>', 'Blok / Alan', route.block)}
+            ${_infoRow('<i data-lucide="layers" width="18" height="18"></i>', 'Kat', route.floor)}
+            ${_infoRow('<i data-lucide="door-open" width="18" height="18"></i>', 'Oda / Bölüm', route.room)}
+            ${_infoRow('<i data-lucide="clock" width="18" height="18"></i>', 'Çalışma Saatleri', route.hours)}
+            ${_infoRow('<i data-lucide="phone" width="18" height="18"></i>', 'İletişim', route.phone)}
+        </div>
+    `;
+}
+
+function _buildAboutSection(route) {
+    if (!route.detail) return '<div style="height:8px;"></div>';
+    return `
+        <!-- Birim Hakkında -->
+        <div class="section-card" role="region" aria-label="Birim hakkında">
+            <div class="section-label">Birim Hakkında</div>
+            <p class="detail-about-text">${route.detail}</p>
+        </div>
+        <div style="height:8px;"></div>
+    `;
+}
+
 /* ── AR Aktif Detay HTML ── */
 function _buildARContent(route, stats) {
     return `
@@ -82,23 +109,8 @@ function _buildARContent(route, stats) {
             </div>
         </div>
 
-        <!-- Konum Bilgileri -->
-        <div class="section-card" role="region" aria-label="Konum bilgileri">
-            <div class="section-label">Konum Bilgileri</div>
-            ${_infoRow('<i data-lucide="building" width="18" height="18"></i>', 'Blok / Alan', route.block)}
-            ${_infoRow('<i data-lucide="layers" width="18" height="18"></i>', 'Kat', route.floor)}
-            ${_infoRow('<i data-lucide="door-open" width="18" height="18"></i>', 'Oda / Bölüm', route.room)}
-            ${_infoRow('<i data-lucide="clock" width="18" height="18"></i>', 'Çalışma Saatleri', route.hours)}
-            ${_infoRow('<i data-lucide="phone" width="18" height="18"></i>', 'İletişim', route.phone)}
-        </div>
-
-        <!-- Birim Hakkında -->
-        ${route.detail ? `
-        <div class="section-card" role="region" aria-label="Birim hakkında">
-            <div class="section-label">Birim Hakkında</div>
-            <p class="detail-about-text">${route.detail}</p>
-        </div>` : ''}
-        <div style="height:8px;"></div>
+        ${_buildLocationSection(route)}
+        ${_buildAboutSection(route)}
     `;
 }
 
@@ -126,23 +138,8 @@ function _buildPassiveContent(route) {
             </div>
         </div>
 
-        <!-- Konum Bilgileri -->
-        <div class="section-card" role="region" aria-label="Konum bilgileri">
-            <div class="section-label">Konum Bilgileri</div>
-            ${_infoRow('<i data-lucide="building" width="18" height="18"></i>', 'Blok / Alan', route.block)}
-            ${_infoRow('<i data-lucide="layers" width="18" height="18"></i>', 'Kat', route.floor)}
-            ${_infoRow('<i data-lucide="door-open" width="18" height="18"></i>', 'Oda / Bölüm', route.room)}
-            ${_infoRow('<i data-lucide="clock" width="18" height="18"></i>', 'Çalışma Saatleri', route.hours)}
-            ${_infoRow('<i data-lucide="phone" width="18" height="18"></i>', 'İletişim', route.phone)}
-        </div>
-
-        <!-- Birim Hakkında -->
-        ${route.detail ? `
-        <div class="section-card" role="region" aria-label="Birim hakkında">
-            <div class="section-label">Birim Hakkında</div>
-            <p class="detail-about-text">${route.detail}</p>
-        </div>` : ''}
-        <div style="height:8px;"></div>
+        ${_buildLocationSection(route)}
+        ${_buildAboutSection(route)}
     `;
 }
 

@@ -174,14 +174,14 @@ ul, ol { list-style: none; }
 /* ── Info Row (inside section cards) ── */
 .info-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 11px;
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
 }
 .info-row:first-of-type { padding-top: 0; }
 .info-row:last-child     { border-bottom: none; padding-bottom: 0; }
-.info-row-icon { font-size: 17px; flex-shrink: 0; margin-top: 2px; }
+.info-row-icon { font-size: 17px; flex-shrink: 0; margin-top: 0; }
 .info-row-label { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
 .info-row-value { font-size: 14px; color: var(--ink); font-weight: 600; }
 

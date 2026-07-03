@@ -4,15 +4,20 @@
  */
 
 
+let _settingsBackdrop, _settingsDrawer;
+
 function initSettings() {
     const btnToggle = document.getElementById('btn-settings');
     const btnClose = document.getElementById('btn-settings-close');
-    const backdrop = document.getElementById('settings-backdrop');
-    const drawer = document.getElementById('settings-drawer');
+    _settingsBackdrop = document.getElementById('settings-backdrop');
+    _settingsDrawer = document.getElementById('settings-drawer');
     const handle = document.getElementById('settings-handle');
     const header = document.querySelector('.settings-header');
 
-    if (!btnToggle || !btnClose || !backdrop || !drawer) return;
+    if (!btnToggle || !btnClose || !_settingsBackdrop || !_settingsDrawer) return;
+    
+    const backdrop = _settingsBackdrop;
+    const drawer = _settingsDrawer;
 
     // Aç
     btnToggle.addEventListener('click', openSettingsDrawer);
@@ -72,8 +77,8 @@ function initSettings() {
 }
 
 function openSettingsDrawer() {
-    const backdrop = document.getElementById('settings-backdrop');
-    const drawer = document.getElementById('settings-drawer');
+    const backdrop = _settingsBackdrop;
+    const drawer = _settingsDrawer;
     
     drawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
     backdrop.style.display = 'block';
@@ -95,8 +100,8 @@ function openSettingsDrawer() {
 }
 
 function closeSettingsDrawer() {
-    const backdrop = document.getElementById('settings-backdrop');
-    const drawer = document.getElementById('settings-drawer');
+    const backdrop = _settingsBackdrop;
+    const drawer = _settingsDrawer;
     
     drawer.style.transition = 'transform 0.3s cubic-bezier(0.32, 1, 0.6, 1)';
     drawer.style.transform = 'translateY(100%)';

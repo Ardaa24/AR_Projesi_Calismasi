@@ -16,6 +16,15 @@ const _dom = {
     turnOverlay: () => document.getElementById('ar-turn'),
     topHud:      () => document.getElementById('ar-top-hud'),
     bottomPanel: () => document.getElementById('ar-bottom'),
+    hudArrow:    () => document.getElementById('ar-hud-arrow'),
+    hudDist:     () => document.getElementById('ar-dist'),
+    hudTime:     () => document.getElementById('ar-time'),
+    hudNcLabel:  () => document.getElementById('ar-nc-label'),
+    hudNcAction: () => document.getElementById('ar-nc-action'),
+    hudNcIcon:   () => document.getElementById('ar-nc-icon'),
+    turnIcon:    () => document.getElementById('ar-turn-icon'),
+    turnText:    () => document.getElementById('ar-turn-text'),
+    turnDist:    () => document.getElementById('ar-turn-dist')
 };
 
 /* ── Sabitler ── */
@@ -255,10 +264,12 @@ function _onEnterAR() {
     _dom.bottomPanel().style.display = 'flex';
     
     // Show HUD arrow
-    document.getElementById('ar-hud-arrow').style.display = 'block';
+    const hudArrow = _dom.hudArrow();
+    if(hudArrow) hudArrow.style.display = 'block';
 
-    _updateHUD();
-    document.getElementById('ar-dest').textContent = AppState.activeRoute.name;
+    _refreshHUDFromTick(Infinity, 0); // İlk HUD güncellemesi
+    const arDest = document.getElementById('ar-dest');
+    if (arDest) arDest.textContent = AppState.activeRoute.name;
     _updateArrivedBtn();
 
     setTimeout(_drawArrows, 1500);
@@ -277,7 +288,8 @@ function _onExitAR() {
     _dom.topHud().style.display    = 'none';
     _dom.bottomPanel().style.display = 'none';
     _dom.turnOverlay().classList.remove('visible');
-    document.getElementById('ar-hud-arrow').style.display = 'none';
+    const hudArrow = _dom.hudArrow();
+    if(hudArrow) hudArrow.style.display = 'none';
     _dom.arrows().innerHTML = '';
     _dom.scene().classList.remove('ar-active');
     _dom.overlay().classList.remove('ar-active');
@@ -287,30 +299,41 @@ function _onExitAR() {
     if (scene.pause) scene.pause();
 }
 
-/* ════════════════════════════════════════════════════
-   HUD GÜNCELLEME
-════════════════════════════════════════════════════ */
-function _updateHUD() {
+function _refreshHUDFromTick(distToTurn, remain) {
     const nextLeg = AppState.arLegs[AppState.legIdx + 1];
-    const iconEl   = document.getElementById('ar-nc-icon');
-    const labelEl  = document.getElementById('ar-nc-label');
-    const actionEl = document.getElementById('ar-nc-action');
+    const iconEl   = _dom.hudNcIcon();
+    const labelEl  = _dom.hudNcLabel();
+    const actionEl = _dom.hudNcAction();
+    const distEl   = _dom.hudDist();
+    const timeEl   = _dom.hudTime();
+
+    if (distEl) distEl.textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
+    if (labelEl) labelEl.textContent = remain < 1 ? '<1m kaldı' : `${Math.round(remain)}m kaldı`;
+    
+    const estSec = Math.ceil(remain * 1.5);
+    if (timeEl) timeEl.textContent = estSec >= 60 ? `${Math.ceil(estSec / 60)}dk` : `${estSec}sn`;
+
+    if (!iconEl || !actionEl) return;
 
     if (nextLeg && nextLeg.type === 'info') {
-        iconEl.innerHTML     = `<i data-lucide="${nextLeg.icon || 'info'}"></i>`;
-        labelEl.textContent  = 'Sonraki Adım';
         actionEl.textContent = nextLeg.title || 'Bilgi Ekranı';
+        iconEl.textContent = "ℹ️";
     } else if (nextLeg && nextLeg.instruction) {
-        iconEl.innerHTML     = `<i data-lucide="corner-up-right"></i>`;
-        labelEl.textContent  = 'Sonraki Dönüş';
-        actionEl.textContent = nextLeg.instruction
-            .replace(/[⬆️⬅️➡️↗↙↖↘]/g, '').trim().substring(0, 28);
+        const ins = (nextLeg.instruction || nextLeg.title || '').toLowerCase();
+        if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
+            actionEl.textContent = "Sola Dönülecek";
+            iconEl.textContent = "↖";
+        } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
+            actionEl.textContent = "Sağa Dönülecek";
+            iconEl.textContent = "↗";
+        } else {
+            actionEl.textContent = "Düz Devam";
+            iconEl.textContent = "⬆";
+        }
     } else {
-        iconEl.innerHTML     = `<i data-lucide="flag"></i>`;
-        labelEl.textContent  = 'Son Düzlük';
-        actionEl.textContent = 'Hedefe yaklaştınız';
+        actionEl.textContent = "Hedef";
+        iconEl.textContent = "📍";
     }
-    if (window.lucide) lucide.createIcons({root: iconEl});
 }
 
 function _updateArrivedBtn() {
@@ -428,6 +451,9 @@ function _getProgress(camPos, pathPoints) {
 const TARGET_FPS = 30;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let _lastTickTime = 0;
+let _arrivalDebounceId = null; // Varış kontrolü için debounce
+const _camPosCache = new THREE.Vector3();
+const _dirCache = new THREE.Vector3();
 
 function _tick(time) {
     if (!AppState.arActive) return;
@@ -439,17 +465,16 @@ function _tick(time) {
     _lastTickTime = time;
 
     const cam = _dom.cam().object3D;
-    const camPos = new THREE.Vector3();
-    cam.getWorldPosition(camPos);
+    cam.getWorldPosition(_camPosCache);
     
     // 1. Kusursuz Zemin Kilidi (Hit-Test kaldırıldı, Donanımsal Y=0 baz alınır)
     const scene = _dom.scene();
     if (scene.is('ar-mode')) {
         // local-floor aktifse kamera 0.8 metrenin üzerindedir (fiziksel boy).
-        if (camPos.y > 0.8) {
+        if (_camPosCache.y > 0.8) {
             _groundY = 0; // %100 Zemine oturur, Lazer okuma hatası bitti.
         } else {
-            _groundY = camPos.y - 1.5; // Fallback
+            _groundY = _camPosCache.y - 1.5; // Fallback
         }
     }
     
@@ -472,7 +497,7 @@ function _tick(time) {
             arrow.el.object3D.position.y = _groundY + 0.01;
 
             // Frustum Culling
-            const dist = Math.hypot(camPos.x - arrow.el.object3D.position.x, camPos.z - arrow.el.object3D.position.z);
+            const dist = Math.hypot(_camPosCache.x - arrow.el.object3D.position.x, _camPosCache.z - arrow.el.object3D.position.z);
             arrow.el.object3D.visible = (dist < 10);
         }
     }
@@ -483,14 +508,13 @@ function _tick(time) {
     /* HUD Compass Arrow Update */
     if (curLeg && curLeg.path && curLeg.path.length > 1) {
         const nextPt = _parsePos(curLeg.path[Math.min(1, curLeg.path.length - 1)]);
-        const dx = nextPt.x - camPos.x;
-        const dz = nextPt.z - camPos.z;
+        const dx = nextPt.x - _camPosCache.x;
+        const dz = nextPt.z - _camPosCache.z;
         
         // Pusula Yön Matematiği
         const targetAngleRad = Math.atan2(dx, -dz);
-        const dir = new THREE.Vector3();
-        cam.getWorldDirection(dir);
-        const camRotY = Math.atan2(dir.x, -dir.z); 
+        cam.getWorldDirection(_dirCache);
+        const camRotY = Math.atan2(_dirCache.x, -_dirCache.z); 
 
         const relativeAngle = targetAngleRad - camRotY;
         const rawDeg = THREE.MathUtils.radToDeg(relativeAngle);
@@ -501,7 +525,7 @@ function _tick(time) {
         // Unwrap algoritması ile 360 derece fırıldak dönmesini (Spinning) engelliyoruz
         _lastCompassDeg = _unwrapAngle(targetDeg, _lastCompassDeg);
         
-        const arrowEl = document.getElementById('ar-hud-arrow');
+        const arrowEl = _dom.hudArrow();
         if (arrowEl) arrowEl.style.transform = `rotate(${_lastCompassDeg}deg)`; 
     }
 
@@ -509,7 +533,7 @@ function _tick(time) {
     let distToTurn = Infinity;
     if (curLeg && curLeg.path && curLeg.path.length > 0) {
         const finalPt = _parsePos(curLeg.path[curLeg.path.length - 1]);
-        distToTurn = Math.hypot(camPos.x - finalPt.x, camPos.z - finalPt.z);
+        distToTurn = Math.hypot(_camPosCache.x - finalPt.x, _camPosCache.z - finalPt.z);
     }
 
     /* Kalan mesafe hesabı (SADECE o anki bacağın (leg) mesafesi) */
@@ -520,36 +544,12 @@ function _tick(time) {
 
     let covered = 0;
     if (curLeg?.path) {
-        covered = _getProgress(camPos, curLeg.path.map(_parsePos));
+        covered = _getProgress(_camPosCache, curLeg.path.map(_parsePos));
     }
     const remain = Math.max(0, curLegTotalDist - covered);
 
-    /* HUD metrik güncelle */
-    document.getElementById('ar-dist').textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
-    document.getElementById('ar-nc-label').textContent = `${Math.round(remain)}m kaldı`;
-    const estSec = Math.ceil(remain * 1.5);
-    document.getElementById('ar-time').textContent = estSec >= 60 ? `${Math.ceil(estSec / 60)}dk` : `${estSec}sn`;
-
-    // Üst Paneli (HUD) Dinamik Olarak Sonraki Bacağı (Dönüşü) Gösterecek Şekilde Güncelle
-    const nextLegHUD = AppState.arLegs[AppState.legIdx + 1];
-    const actionEl = document.getElementById('ar-nc-action');
-    const ncIconEl = document.getElementById('ar-nc-icon');
-    if (nextLegHUD) {
-        const ins = (nextLegHUD.instruction || nextLegHUD.title || '').toLowerCase();
-        if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
-            actionEl.textContent = "Sola Dönülecek";
-            ncIconEl.textContent = "↖";
-        } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
-            actionEl.textContent = "Sağa Dönülecek";
-            ncIconEl.textContent = "↗";
-        } else {
-            actionEl.textContent = "Düz Devam";
-            ncIconEl.textContent = "⬆";
-        }
-    } else {
-        actionEl.textContent = "Hedef";
-        ncIconEl.textContent = "📍";
-    }
+    /* HUD metrik güncelle (Tek Fonksiyonda) */
+    _refreshHUDFromTick(distToTurn, remain);
 
     /* Dönüş uyarısı (Büyük ekran uyarıcı - Dalgalanmayı önleyen sabit hedef hesabı ile) */
     _handleTurnWarning(distToTurn);
@@ -561,10 +561,20 @@ function _tick(time) {
 
     /* Otomatik varış (son bacak) */
     if (distToTurn < ARRIVAL_THRESHOLD && !inGrace && AppState.legIdx === AppState.arLegs.length - 1) {
-        cancelAnimationFrame(AppState.tickRafId);
-        _dom.scene().exitVR();
-        _showDone();
+        if (!_arrivalDebounceId) {
+            _arrivalDebounceId = setTimeout(() => {
+                cancelAnimationFrame(AppState.tickRafId);
+                _dom.scene().exitVR();
+                _showDone();
+                _arrivalDebounceId = null;
+            }, 500); // 500ms debounce
+        }
         return;
+    } else {
+        if (_arrivalDebounceId) {
+            clearTimeout(_arrivalDebounceId);
+            _arrivalDebounceId = null;
+        }
     }
 
     AppState.tickRafId = requestAnimationFrame(_tick);
@@ -588,21 +598,23 @@ function _handleTurnWarning(distToEnd) {
 }
 
 function _showTurn(icon, text, dist) {
-    const iconEl  = document.getElementById('ar-turn-icon');
-    const textEl  = document.getElementById('ar-turn-text');
-    const distEl  = document.getElementById('ar-turn-dist');
+    const iconEl  = _dom.turnIcon();
+    const textEl  = _dom.turnText();
+    const distEl  = _dom.turnDist();
     const overlay = _dom.turnOverlay();
 
-    iconEl.innerHTML = `<i data-lucide="${icon}" width="36" height="36" style="color:white;"></i>`;
-    
-    iconEl.style.animation = `${icon.includes('left') ? 'bounceL' : 'bounceR'} .6s ease-in-out infinite alternate`;
-    textEl.textContent = text;
-    distEl.textContent = dist ? `${Math.round(dist)}m sonra` : '';
+    if(iconEl) {
+        iconEl.innerHTML = `<i data-lucide="${icon}" width="36" height="36" style="color:white;"></i>`;
+        iconEl.style.animation = `${icon.includes('left') ? 'bounceL' : 'bounceR'} .6s ease-in-out infinite alternate`;
+    }
+    if(textEl) textEl.textContent = text;
+    if(distEl) distEl.textContent = dist ? `${Math.round(dist)}m sonra` : '';
 
-    if (!overlay.classList.contains('visible')) {
+    if (overlay && !overlay.classList.contains('visible')) {
         overlay.classList.add('visible');
         /* Haptic: dönüş uyarısı */
         vibrate(200);
+        if (window.lucide && iconEl) lucide.createIcons({root: iconEl});
     }
 }
 function _hideTurn() { _dom.turnOverlay().classList.remove('visible'); }

@@ -16,6 +16,15 @@
  */
 
 /* ─────────────────────────────────────────────────────────────
+   AR NAVİGASYON SABİTLERİ
+───────────────────────────────────────────────────────────── */
+/**
+ * STEP_LENGTH_M: Her adımın metre cinsinden uzunluğu.
+ * Standat yetişkin adımı ~0.75m. Geliştirici buradan değiştirebilir.
+ */
+const STEP_LENGTH_M = 0.75;
+
+/* ─────────────────────────────────────────────────────────────
    KATEGORİLER
 ───────────────────────────────────────────────────────────── */
 const ROUTE_CATEGORIES = [

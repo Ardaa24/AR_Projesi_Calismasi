@@ -815,3 +815,96 @@
     color: #fff;
     transform: scale(0.985);
 }
+
+/* ── Ayarlar Bölüm Açıklaması ── */
+.settings-section-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ════════════════════════════════════════════════════
+   AR OK STİLİ SEÇİCİ
+════════════════════════════════════════════════════ */
+.arrow-style-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.arrow-style-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg-card, #1a1f2e);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    position: relative;
+}
+
+.arrow-style-card:active {
+    transform: scale(0.98);
+}
+
+/* Seçili kart */
+.arrow-style-card.active {
+    border-color: #0ea5e9;
+    background: rgba(14, 165, 233, 0.08);
+}
+
+.arrow-style-card.active .arrow-style-check {
+    opacity: 1;
+    color: #0ea5e9;
+}
+
+/* Önizleme kutusu */
+.arrow-style-preview {
+    width: 52px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.arrow-style-img {
+    width: 44px;
+    height: 30px;
+    object-fit: contain;
+}
+
+/* Metin bilgileri */
+.arrow-style-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.arrow-style-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.arrow-style-desc {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+/* Seçim işareti */
+.arrow-style-check {
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+}

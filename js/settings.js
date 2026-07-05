@@ -1,8 +1,53 @@
 /**
- * Bağımlılıklar: router.js (showToast), ar.js (window.ARDebug)
+ * settings.js — Ayarlar Çekmecesi ve Uygulama Tercihleri
+ *
+ * Sorumluluklar:
+ *   - Ayarlar çekmecesini açma/kapama
+ *   - İzin rozetlerini güncelleme
+ *   - AR Ok Stili tercihi (localStorage'a kaydedilir)
+ *
+ * Bağımlılıklar: router.js (showToast)
  * Tarsus Devlet Hastanesi AR Navigasyon Sistemi
  */
 
+/* ════════════════════════════════════════════════════
+   AR OK STİLİ YÖNETİMİ
+════════════════════════════════════════════════════ */
+const ARROW_STYLE_KEY     = 'ar_arrow_style';
+const ARROW_STYLE_DEFAULT = 'chevron';
+const VALID_ARROW_STYLES  = ['chevron', 'strip', 'particles'];
+
+/** Kayıtlı ok stilini döndürür. Kayıt yoksa varsayılanı döndürür. */
+function getArrowStyle() {
+    const saved = localStorage.getItem(ARROW_STYLE_KEY);
+    return VALID_ARROW_STYLES.includes(saved) ? saved : ARROW_STYLE_DEFAULT;
+}
+
+/** Ok stilini kaydeder ve ayarlar UI'ini günceller. */
+function setArrowStyle(style) {
+    if (!VALID_ARROW_STYLES.includes(style)) return;
+    localStorage.setItem(ARROW_STYLE_KEY, style);
+    _updateArrowStyleUI();
+    showToast(`Ok stili değiştirildi: ${_arrowStyleLabel(style)}`);
+}
+
+/** İnsan okunabilir stil etiketi */
+function _arrowStyleLabel(style) {
+    const labels = { chevron: 'Google Chevron', strip: 'Zemin Şeridi', particles: 'Akan Parçacıklar' };
+    return labels[style] || style;
+}
+
+/** Ayarlar çekmecesindeki seçili stil butonunu günceller */
+function _updateArrowStyleUI() {
+    const current = getArrowStyle();
+    VALID_ARROW_STYLES.forEach(style => {
+        const btn = document.getElementById(`arrow-style-${style}`);
+        if (btn) {
+            btn.classList.toggle('active', style === current);
+            btn.setAttribute('aria-pressed', style === current ? 'true' : 'false');
+        }
+    });
+}
 
 let _settingsBackdrop, _settingsDrawer;
 
@@ -82,10 +127,7 @@ function openSettingsDrawer() {
     }, 10);
 
     updatePermissionBadges();
-    
-    if (window.ARDebug && typeof window.ARDebug.updateSettingsUI === 'function') {
-        window.ARDebug.updateSettingsUI();
-    }
+    _updateArrowStyleUI();
 
     // Rerender Lucide icons inside settings drawer
     if (window.lucide) {

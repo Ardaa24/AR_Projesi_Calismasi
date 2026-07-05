@@ -1,10 +1,24 @@
 /**
- * ar.js — AR Motoru (A-Frame + HUD + Navigasyon Mantığı)
- * Bağımlılıklar: router.js (AppState, showScreen, vibrate)
+ * ar.js — AR Navigasyon Motoru
+ *
+ * Sorumluluklar:
+ *   - A-Frame sahnesini başlatma / kapatma
+ *   - İvmeölçer tabanlı adım sayar (Pedometer) ile mesafe takibi
+ *   - 3 farklı ok stili (Chevron / Şerit / Parçacık)
+ *   - HUD (Heads-Up Display) güncelleme
+ *   - Varış ve geçiş butonu yönetimi
+ *
+ * Bağımlılıklar:
+ *   - router.js  → AppState, showScreen, showToast, vibrate
+ *   - config.js  → STEP_LENGTH_M
+ *   - settings.js → getArrowStyle()
+ *
  * Tarsus Devlet Hastanesi AR Navigasyon Sistemi
  */
 
-/* ── DOM Referansları (DOMContentLoaded'da başlatılır) ── */
+/* ════════════════════════════════════════════════════
+   DOM REFERANSLARI (DOMContentLoaded'da başlatılır)
+════════════════════════════════════════════════════ */
 let _dom = {};
 
 function _initDom() {
@@ -33,61 +47,56 @@ function _initDom() {
     _dom.actionToast    = document.getElementById('ar-action-toast');
 }
 
-/* ── Sabitler ── */
-const ARROW_SPACING_M           = 0.8;
-const ARRIVAL_THRESHOLD         = 0.5;   // Otomatik varış eşiği (metre)
-const TURN_WARN_DISTANCE        = 2.5;   // Dönüş uyarısı başlama mesafesi (metre)
-const GRACE_PERIOD_MS           = 2000;  // AR açıldıktan sonra varış sayılmaz
-const NEXT_SECTION_UNLOCK_DIST  = 0.5;   // Sonraki Bölüm butonu kilit açma mesafesi
-const TURN_KEYWORDS_LEFT        = ['sola'];
-const TURN_KEYWORDS_RIGHT       = ['sağa'];
+/* ════════════════════════════════════════════════════
+   SABİTLER
+════════════════════════════════════════════════════ */
+const ARRIVAL_THRESHOLD        = 0.5;   // Otomatik varış eşiği (metre)
+const TURN_WARN_DISTANCE       = 2.5;   // Dönüş uyarısı başlama mesafesi (metre)
+const GRACE_PERIOD_MS          = 2500;  // AR açıldıktan sonra ilk X ms içinde varış sayılmaz
+const NEXT_SECTION_UNLOCK_DIST = 0.5;   // Sonraki Bölüm butonu kilit açma mesafesi (metre)
+const ARROW_SPACING_M          = 0.8;   // Ok arası mesafe (metre)
+const ARROW_CULL_DISTANCE_M    = 10;    // Frustum culling: bu mesafenin ötesi gizlenir (metre)
+const GROUND_ARROW_OFFSET      = 0.01;  // Z-fighting önleme boşluğu (metre)
+const CAMERA_HEIGHT_THRESHOLD  = 0.8;   // local-floor aktifse min. kamera yüksekliği (metre)
+const AVG_HUMAN_HEIGHT_M       = 1.5;   // Ortalama insan boyu (metre) — fallback
+const COMPASS_CORRECTION_DEG   = 135;   // Pusula görünüm düzeltmesi (derece)
+const TURN_KEYWORDS_LEFT       = ['sola'];
+const TURN_KEYWORDS_RIGHT      = ['sağa'];
 
-/* ── Fiziksel / Geometri Sabitleri ── */
-const CAMERA_HEIGHT_THRESHOLD   = 0.8;   // local-floor aktifse min. kamera yüksekliği (m)
-const AVG_HUMAN_HEIGHT_M        = 1.5;   // Ortalama insan boyu fallback (m)
-const GROUND_ARROW_OFFSET       = 0.01;  // Z-fighting önleme: ok zemin üstü boşluk (m)
-const CHEVRON_GROUND_INIT       = 0.02;  // Chevron oluşturma baz zemin boşluğu (m)
-const COMPASS_CORRECTION_DEG    = 135;   // Pusula ters görünüm düzeltmesi: 180° − 45°
-const ARROW_CULL_DISTANCE_M     = 10;    // Frustum culling: bu mesafenin ötesi gizlenir (m)
+/* ── Performans Sabitleri ── */
+const TARGET_FPS    = 30;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
-/* ── Pusula Sarmal Çözücü (Anti-Spinning) ── */
-let _lastCompassDeg = 0;
-function _unwrapAngle(newAngle, lastAngle) {
-    let diff = newAngle - (lastAngle % 360);
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    return lastAngle + diff;
-}
-
+/* ════════════════════════════════════════════════════
+   A-FRAME BİLEŞEN KAYDI — Google Chevron
+════════════════════════════════════════════════════ */
 AFRAME.registerComponent('google-chevron', {
     init: function () {
         const shape = new THREE.Shape();
-        // %30 büyütülmüş kordinatlar
-        shape.moveTo(0, 0.52);
+        shape.moveTo(0,     0.52);
         shape.lineTo(0.455, -0.52);
         shape.lineTo(0.195, -0.52);
-        shape.lineTo(0, 0.0);
+        shape.lineTo(0,      0.0);
         shape.lineTo(-0.195, -0.52);
         shape.lineTo(-0.455, -0.52);
-        shape.lineTo(0, 0.52);
+        shape.lineTo(0,      0.52);
 
-        const extrudeSettings = {
-            depth: 0.035, // Daha kalın (etli)
+        const geometry = new THREE.ExtrudeGeometry(shape, {
+            depth: 0.035,
             bevelEnabled: true,
             bevelSegments: 2,
             steps: 1,
             bevelSize: 0.02,
             bevelThickness: 0.02
-        };
+        });
 
-        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
         geometry.computeBoundingBox();
         const yOffset = -0.5 * (geometry.boundingBox.max.y - geometry.boundingBox.min.y);
         geometry.translate(0, yOffset, 0);
 
         const material = new THREE.MeshStandardMaterial({
-            color: 0x0066ff, // Yüksek kontrastlı parlak Google Mavisi
-            emissive: 0x0033ff, // Etrafa hafif parlama hissi (Glow)
+            color: 0x0066ff,
+            emissive: 0x0033ff,
             emissiveIntensity: 0.4,
             roughness: 0.1,
             metalness: 0.1,
@@ -96,24 +105,23 @@ AFRAME.registerComponent('google-chevron', {
         });
 
         const mesh = new THREE.Mesh(geometry, material);
-        // XY düzleminden XZ (zemin) düzlemine yatır
-        mesh.rotation.x = -Math.PI / 2;
-
+        mesh.rotation.x = -Math.PI / 2; // XY → XZ (zemin) düzlemine yatır
         this.el.setObject3D('mesh', mesh);
     }
 });
 
+/* ════════════════════════════════════════════════════
+   YARDIMCI FONKSİYONLAR
+════════════════════════════════════════════════════ */
 
-/* ── Mesafe Hesaplama Yardımcısı ── */
+/** Rota noktasını {x, y, z} objesine dönüştürür */
 function _parsePos(pt) {
     if (!pt || !pt.pos) return { x: 0, y: 0, z: 0 };
     const [x, y, z] = pt.pos.split(' ').map(Number);
-    return { x: x||0, y: y||0, z: z||0 };
+    return { x: x || 0, y: y || 0, z: z || 0 };
 }
 
-let _activeArrows = []; // Animasyon ve culling için ok listesi
-let _currentTransformedPath = []; // Cihaza göre hizalanmış gerçek fiziksel rota
-
+/** Bir bacağın toplam mesafesini hesaplar */
 function _calcLegDistance(path) {
     if (!path || path.length < 2) return 0;
     let dist = 0;
@@ -125,26 +133,110 @@ function _calcLegDistance(path) {
     return dist;
 }
 
+/** Pusula açısı sarmalını çözer (Anti-spinning) */
+let _lastCompassDeg = 0;
+function _unwrapAngle(newAngle, lastAngle) {
+    let diff = newAngle - (lastAngle % 360);
+    if (diff >  180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return lastAngle + diff;
+}
+
+/* ════════════════════════════════════════════════════
+   PEDOMETER — İVMEÖLÇER TABANLI ADIM SAYAR
+   Neden: Mobil WebXR, yürüme mesafesini (6DOF pozisyon)
+   güvenilir biçimde izleyemez. Google/Apple'ın mobil AR
+   navigasyonunda kullandığı yaklaşım budur.
+════════════════════════════════════════════════════ */
+let _pedometerListener  = null;
+let _stepCount          = 0;
+let _legDistWalked      = 0; // Mevcut bacakta yürünen mesafe (metre)
+let _lastAccelY         = 0;
+let _stepCooldownMs     = 0;
+const STEP_COOLDOWN_MS  = 350; // Çift adım sayımını önlemek için minimum bekleme süresi
+
+/**
+ * İvmeölçer verisinden adım çıkarır.
+ * Dikey ivmedeki zirve geçişlerini tespit eder (threshold-crossing).
+ */
+function _onMotion(e) {
+    const accel = e.accelerationIncludingGravity;
+    if (!accel) return;
+
+    const nowMs   = Date.now();
+    const currentY = accel.y;
+
+    // Zirve geçişi: negatiften pozitife geçiş + eşik + soğuma süresi
+    const threshold = 1.2; // m/s² — hassasiyet; düşürülürse daha sık adım sayar
+    if (_lastAccelY < -threshold && currentY > threshold && nowMs > _stepCooldownMs) {
+        _stepCount++;
+        _legDistWalked = _stepCount * STEP_LENGTH_M;
+        _stepCooldownMs = nowMs + STEP_COOLDOWN_MS;
+    }
+    _lastAccelY = currentY;
+}
+
+/** Pedometeri başlatır (iOS için izin isteyebilir) */
+async function _initPedometer() {
+    _stepCount     = 0;
+    _legDistWalked = 0;
+    _lastAccelY    = 0;
+    _stepCooldownMs = 0;
+
+    // iOS 13+: DeviceMotionEvent için ayrı izin gerekli
+    if (typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+            const result = await DeviceMotionEvent.requestPermission();
+            if (result !== 'granted') {
+                console.warn('Pedometer: Motion izni reddedildi.');
+                return;
+            }
+        } catch (err) {
+            console.warn('Pedometer: Motion izni isteği başarısız.', err);
+            return;
+        }
+    }
+
+    _pedometerListener = _onMotion;
+    window.addEventListener('devicemotion', _pedometerListener, { passive: true });
+    console.log('Pedometer: Başlatıldı.');
+}
+
+/** Pedometeri durdurur */
+function _stopPedometer() {
+    if (_pedometerListener) {
+        window.removeEventListener('devicemotion', _pedometerListener);
+        _pedometerListener = null;
+        console.log('Pedometer: Durduruldu.');
+    }
+}
+
+/** Her yeni bacakta adım sayacını sıfırlar */
+function _resetLegDistance() {
+    _stepCount     = 0;
+    _legDistWalked = 0;
+}
+
 /* ════════════════════════════════════════════════════
    AR BAŞLATMA
 ════════════════════════════════════════════════════ */
 
 async function startAR(route) {
     const hasSessionPerm = sessionStorage.getItem('ar_camera_granted');
-    
-    // Tarayıcı izin API'si kontrolü
+
     let permStatus = 'prompt';
     if (navigator.permissions && navigator.permissions.query) {
         try {
             const status = await navigator.permissions.query({ name: 'camera' });
             permStatus = status.state;
         } catch (e) {
-            console.warn("Permissions API error:", e);
+            console.warn('Permissions API error:', e);
         }
     }
 
     if (permStatus === 'denied') {
-        showToast("Kamera izni reddedildi. Lütfen tarayıcı ayarlarından etkinleştirin.");
+        showToast('Kamera izni reddedildi. Lütfen tarayıcı ayarlarından etkinleştirin.');
         return;
     }
 
@@ -153,31 +245,30 @@ async function startAR(route) {
         return;
     }
 
-    // Modal Gösterimi
+    // İzin modal'ı göster
     const modal = document.getElementById('ar-onboarding');
     modal.style.display = 'flex';
-    
+
     document.getElementById('btn-accept-ar').onclick = () => {
         modal.style.display = 'none';
         sessionStorage.setItem('ar_camera_granted', 'true');
-        
-        // Kalibrasyon uyarısı
-        window.addEventListener('deviceorientation', function(e) {
+
+        // Pusula kalibrasyonu uyarısı
+        window.addEventListener('deviceorientation', function (e) {
             if (e.webkitCompassAccuracy && e.webkitCompassAccuracy > 15) {
-                showToast("Pusula kalibrasyonu düşük olabilir. Telefonunuzu havada 8 çizerek sallayın.");
+                showToast('Pusula kalibrasyonu düşük. Telefonu havada 8 çizerek sallayın.');
             }
-        }, {once: true});
+        }, { once: true });
 
         _doStartAR(route);
     };
-    
+
     document.getElementById('btn-cancel-ar').onclick = () => {
         modal.style.display = 'none';
     };
 }
 
 function _doStartAR(route) {
-    /* Durumu sıfırla */
     AppState.activeRoute = route;
     AppState.arLegs      = route.legs || [];
     AppState.legIdx      = 0;
@@ -189,7 +280,6 @@ function _doStartAR(route) {
 
     _updateArrivedBtn();
 
-    /* İlk bacak "info" ise bilgi ekranını önce göster */
     const firstLeg = AppState.arLegs[0];
     if (firstLeg && firstLeg.type === 'info') {
         _showInfoScreen(firstLeg);
@@ -201,13 +291,10 @@ function _doStartAR(route) {
 function _enterAR() {
     const scene = _dom.scene;
     scene.classList.add('ar-active');
-    
-    // WebGL render döngüsünü aktifleştir
     if (scene.play) scene.play();
-    
-    // WebXR API kontrolü (HTTPS zorunluluğu)
+
     if (!navigator.xr) {
-        showToast("Hata: WebXR desteklenmiyor veya bağlantı güvenli değil (HTTPS gerekli).");
+        showToast('Hata: WebXR desteklenmiyor veya HTTPS gerekli.');
         scene.classList.remove('ar-active');
         return;
     }
@@ -216,14 +303,14 @@ function _enterAR() {
         const p = scene.enterAR();
         if (p && p.catch) {
             p.catch(err => {
-                console.error("AR Start Error:", err);
-                showToast("AR Başlatılamadı: Kameraya izin verilmedi veya desteklenmiyor.");
+                console.error('AR Start Error:', err);
+                showToast('AR başlatılamadı: Kamera izni reddedilmiş olabilir.');
                 scene.classList.remove('ar-active');
             });
         }
     } catch (e) {
-        console.error("AR Start Exception:", e);
-        showToast("AR Başlatılamadı: A-Frame motoru hatası.");
+        console.error('AR Start Exception:', e);
+        showToast('AR başlatılamadı: A-Frame motoru hatası.');
         scene.classList.remove('ar-active');
     }
 }
@@ -232,22 +319,22 @@ function _enterAR() {
    A-FRAME OLAYLARI
 ════════════════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
-    _initDom(); // DOM referanslarını önbelleğe al
+    _initDom();
     const scene = _dom.scene;
 
     scene.addEventListener('enter-vr', _onEnterAR);
     scene.addEventListener('exit-vr',  _onExitAR);
-    
-    // Sayfa ilk yüklenдиğinde WebGL render döngüsünü durdurarak GPU ve pil tasarrufu sağla
+
+    // İlk yüklemede render döngüsünü durdur (GPU/pil tasarrufu)
     scene.addEventListener('loaded', () => {
         if (scene.pause) scene.pause();
     });
 });
 
-let _hitTestSource = null;
-let _xrRefSpace = null;
-let _xrViewerSpace = null;
-let _groundY = -1.5; // fallback
+let _hitTestSource  = null;
+let _xrRefSpace     = null;
+let _xrViewerSpace  = null;
+let _groundY        = -1.5; // Fallback zemin Y değeri
 
 function _onEnterAR() {
     AppState.arActive    = true;
@@ -257,40 +344,34 @@ function _onEnterAR() {
     const scene = _dom.scene;
     if (scene.is('ar-mode') && scene.renderer.xr.getSession()) {
         const xrSession = scene.renderer.xr.getSession();
-        
-        // Önce local-floor (zemin çıpası) iste, Drift'i devasa oranda azaltır
-        xrSession.requestReferenceSpace('local-floor').then((refSpace) => { 
-            _xrRefSpace = refSpace; 
-        }).catch(() => {
-            // Desteklemiyorsa fallback local
-            xrSession.requestReferenceSpace('local').then((refSpace) => { _xrRefSpace = refSpace; });
-        });
-        xrSession.requestReferenceSpace('viewer').then((refSpace) => {
-            _xrViewerSpace = refSpace;
-            xrSession.requestHitTestSource({ space: _xrViewerSpace }).then((source) => {
-                _hitTestSource = source;
-            }).catch(err => console.log("Hit test not supported", err));
+        xrSession.requestReferenceSpace('local-floor')
+            .then(ref => { _xrRefSpace = ref; })
+            .catch(() => xrSession.requestReferenceSpace('local')
+                .then(ref => { _xrRefSpace = ref; }));
+
+        xrSession.requestReferenceSpace('viewer').then(ref => {
+            _xrViewerSpace = ref;
+            xrSession.requestHitTestSource({ space: _xrViewerSpace })
+                .then(src => { _hitTestSource = src; })
+                .catch(err => console.log('Hit test not supported', err));
         });
     }
 
-    /* Overlay + HUD göster */
     _dom.infoScreen.classList.remove('visible');
     _dom.overlay.classList.add('ar-active');
     _dom.topHud.style.display    = 'flex';
     _dom.bottomPanel.style.display = 'flex';
-    
-    // Show HUD arrow
     if (_dom.hudArrow) _dom.hudArrow.style.display = 'block';
 
-    _refreshHUDFromTick(Infinity, 0); // İlk HUD güncellemesi
+    _refreshHUD(Infinity, 0);
     if (_dom.arDest) _dom.arDest.textContent = AppState.activeRoute.name;
     _updateArrivedBtn();
 
-    /* Ortam Haritalama Bekleme Süresi (2 saniye) */
+    // Haritalama bekleme süresi (2s) — zemin stabilitesi için
     if (_dom.mappingOverlay) _dom.mappingOverlay.classList.add('visible');
-    
     setTimeout(() => {
         if (_dom.mappingOverlay) _dom.mappingOverlay.classList.remove('visible');
+        _initPedometer();
         _drawArrows();
     }, 2000);
 }
@@ -299,153 +380,130 @@ function _onExitAR() {
     AppState.arActive = false;
     document.body.style.background = '';
     cancelAnimationFrame(AppState.tickRafId);
-    
+    _stopPedometer();
+
     if (_hitTestSource) {
         _hitTestSource.cancel();
         _hitTestSource = null;
     }
 
-    _dom.topHud.style.display    = 'none';
+    _dom.topHud.style.display      = 'none';
     _dom.bottomPanel.style.display = 'none';
     _dom.turnOverlay.classList.remove('visible');
-    if (_dom.hudArrow) _dom.hudArrow.style.display = 'none';
-    if (_dom.actionToast) _dom.actionToast.classList.remove('visible');
+    if (_dom.hudArrow)       _dom.hudArrow.style.display = 'none';
+    if (_dom.actionToast)    _dom.actionToast.classList.remove('visible');
     if (_dom.mappingOverlay) _dom.mappingOverlay.classList.remove('visible');
     _dom.arrows.innerHTML = '';
     _dom.scene.classList.remove('ar-active');
     _dom.overlay.classList.remove('ar-active');
-    
-    // WebGL render döngüsünü durdurarak GPU yırtılmalarını önle ve pil tasarrufu sağla
     if (_dom.scene.pause) _dom.scene.pause();
 }
 
-/* HUD ikon değişimini izle — aynı ikon varken SVG yeniden parse edilmez */
+/* ════════════════════════════════════════════════════
+   HUD GÜNCELLEME
+════════════════════════════════════════════════════ */
 let _lastHudIconName = '';
 
-function _refreshHUDFromTick(distToTurn, remain) {
-    const nextLeg  = AppState.arLegs[AppState.legIdx + 1];
-    const labelEl  = _dom.hudNcLabel;
-    const actionEl = _dom.hudNcAction;
-    const iconEl   = _dom.hudNcIcon;
-    const distEl   = _dom.hudDist;
-    const timeEl   = _dom.hudTime;
+function _refreshHUD(distToTurn, remain) {
+    const { hudDist, hudTime, hudNcLabel, hudNcAction, hudNcIcon } = _dom;
 
-    if (distEl) distEl.textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
-    if (labelEl) labelEl.textContent = remain < 1 ? '<1m kaldı' : `${Math.round(remain)}m kaldı`;
+    if (hudDist)    hudDist.textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
+    if (hudNcLabel) hudNcLabel.textContent = remain < 1 ? '<1m kaldı' : `${Math.round(remain)}m kaldı`;
 
     const estSec = Math.ceil(remain * 1.5);
-    if (timeEl) timeEl.textContent = estSec >= 60 ? `${Math.ceil(estSec / 60)}dk` : `${estSec}sn`;
+    if (hudTime) hudTime.textContent = estSec >= 60
+        ? `${Math.ceil(estSec / 60)}dk`
+        : `${estSec}sn`;
 
-    if (!iconEl || !actionEl) return;
+    if (!hudNcIcon || !hudNcAction) return;
 
-    /* Yön talimatı ve ikon adını belirle */
-    let newIconName    = 'arrow-up';
-    let newActionText  = 'Düz devam edin';
+    const nextLeg = AppState.arLegs[AppState.legIdx + 1];
+    let iconName  = 'arrow-up';
+    let actionText = 'Düz devam edin';
 
     if (nextLeg && nextLeg.type === 'info') {
-        newIconName   = 'info';
-        newActionText = nextLeg.title || 'Bilgi Ekranı';
+        iconName   = 'info';
+        actionText = nextLeg.title || 'Bilgi Ekranı';
     } else if (nextLeg && nextLeg.instruction) {
-        const ins = (nextLeg.instruction || nextLeg.title || '').toLowerCase();
+        const ins = (nextLeg.instruction || '').toLowerCase();
         if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
-            newIconName   = 'corner-up-left';
-            newActionText = 'Sola dönüp ilerleyin';
+            iconName   = 'corner-up-left';
+            actionText = 'Sola dönüp ilerleyin';
         } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
-            newIconName   = 'corner-up-right';
-            newActionText = 'Sağa dönüp ilerleyin';
+            iconName   = 'corner-up-right';
+            actionText = 'Sağa dönüp ilerleyin';
         }
     } else if (!nextLeg) {
-        newIconName   = 'map-pin';
-        newActionText = 'Hedef';
+        iconName   = 'map-pin';
+        actionText = 'Hedef';
     }
 
-    actionEl.textContent = newActionText;
+    hudNcAction.textContent = actionText;
 
-    /* Sadece ikon değiştiğinde SVG yeniden parse et (30 FPS performans koruması) */
-    if (newIconName !== _lastHudIconName) {
-        _lastHudIconName = newIconName;
-        iconEl.innerHTML = `<i data-lucide="${newIconName}" width="24" height="24"></i>`;
-        if (window.lucide) lucide.createIcons({ root: iconEl });
+    // Sadece ikon değiştiğinde SVG'yi yeniden parse et (performans)
+    if (iconName !== _lastHudIconName) {
+        _lastHudIconName = iconName;
+        hudNcIcon.innerHTML = `<i data-lucide="${iconName}" width="24" height="24"></i>`;
+        if (window.lucide) lucide.createIcons({ root: hudNcIcon });
     }
 }
 
+/* ════════════════════════════════════════════════════
+   VARIŞ BUTONU YÖNETİMİ
+════════════════════════════════════════════════════ */
 function _updateArrivedBtn() {
-    const btn = _dom.arrivedBtn;
-    if (!btn) return;
+    const { arrivedBtn, arArriveLabel } = _dom;
+    if (!arrivedBtn) return;
 
     const isLast = AppState.legIdx === AppState.arLegs.length - 1;
-    if (_dom.arArriveLabel) _dom.arArriveLabel.textContent = isLast ? 'Hedefe Vardım' : 'Sonraki Bölüm';
-    btn.setAttribute('aria-label', isLast ? 'Hedefe vardım' : 'Sonraki bölüme geç');
+    if (arArriveLabel) arArriveLabel.textContent = isLast ? 'Hedefe Vardım' : 'Sonraki Bölüm';
+    arrivedBtn.setAttribute('aria-label', isLast ? 'Hedefe vardım' : 'Sonraki bölüme geç');
 
-    // Her yeni bacakta kilit sıfırlanır (0.5m'de JS açacak)
-    _setArrivedBtnLocked(true);
+    _setArrivedBtnLocked(true); // Her yeni bacakta buton kilitli başlar
 }
 
-/* ════════════════════════════════════════════════════
-   VARIL BUTONU KİLTİ YONETİMı
-   Grace period dışında, distToTurn <= 0.5m olduğunda çağrılır.
-════════════════════════════════════════════════════ */
 function _setArrivedBtnLocked(locked) {
-    const btn = _dom.arrivedBtn;
-    if (!btn) return;
-    if (locked) {
-        btn.disabled = true;
-        btn.classList.remove('btn-glow');
-        if (_dom.actionToast) _dom.actionToast.classList.remove('visible');
-    } else if (btn.disabled) {
-        // Sadece durum değişiyorsa animasyonu tetikle (DOM thrashing önle)
-        btn.disabled = false;
-        btn.classList.add('btn-glow');
-        
-        if (_dom.actionToast) {
-            const isLast = AppState.legIdx === AppState.arLegs.length - 1;
-            const actionText = isLast ? "Hedefe ulaştınız, butona basın" : "Lütfen dönüp Sonraki Bölüm butonuna basın";
-            _dom.actionToast.innerHTML = `<i data-lucide="check-circle" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">${actionText}</span>`;
-            if (window.lucide) lucide.createIcons({ root: _dom.actionToast });
-            _dom.actionToast.classList.add('visible');
-        }
+    const { arrivedBtn, actionToast } = _dom;
+    if (!arrivedBtn) return;
 
-        vibrate([100, 50, 100]); // Dikkat çekici titreşim
+    if (locked) {
+        arrivedBtn.disabled = true;
+        arrivedBtn.classList.remove('btn-glow');
+        if (actionToast) actionToast.classList.remove('visible');
+        return;
     }
+
+    // Sadece durum değişiyorsa animasyonu tetikle (DOM thrashing önleme)
+    if (!arrivedBtn.disabled) return;
+
+    arrivedBtn.disabled = false;
+    arrivedBtn.classList.add('btn-glow');
+
+    if (actionToast) {
+        const isLast = AppState.legIdx === AppState.arLegs.length - 1;
+        const msg    = isLast
+            ? 'Hedefe ulaştınız, butona basın'
+            : 'Lütfen dönüp Sonraki Bölüm butonuna basın';
+        actionToast.innerHTML = `<i data-lucide="check-circle" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">${msg}</span>`;
+        if (window.lucide) lucide.createIcons({ root: actionToast });
+        actionToast.classList.add('visible');
+    }
+
+    vibrate([100, 50, 100]);
 }
 
 /* ════════════════════════════════════════════════════
-   OK ÇİZİMİ
+   OK ÇİZİMİ — Stil Yönlendirici
 ════════════════════════════════════════════════════ */
-function _createNeonBeamSegment(px, pz, angleDeg, length, index) {
-    const el = document.createElement('a-entity');
-    const yPos = _groundY + 0.05; // Zemin üstünde hafif havada
-    
-    // Parçalı line (Plane)
-    el.setAttribute('geometry', `primitive: plane; width: 0.35; height: ${length}`);
-    el.setAttribute('material', 'color: #0ea5e9; shader: flat; transparent: true; opacity: 0.7; side: double');
-    el.setAttribute('rotation', `-90 ${angleDeg} 0`);
-    el.setAttribute('position', `${px} ${yPos} ${pz}`);
+let _activeArrows = [];
 
-    return { el, x: px, z: pz, active: true, index: index };
-}
-
-function _createMapPin(px, pz) {
-    const el = document.createElement('a-entity');
-    const yPos = _groundY + 0.4;
-    
-    el.innerHTML = `
-        <a-cone position="0 -0.2 0" radius-bottom="0.02" radius-top="0.15" height="0.4" material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9" rotation="180 0 0"></a-cone>
-        <a-sphere position="0 0.1 0" radius="0.15" material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9"></a-sphere>
-        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.2" rotation="-90 0 0" material="color: #10b981; shader: flat" animation="property: scale; to: 2 2 2; dur: 1500; loop: true; dir: normal"></a-ring>
-        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.2" rotation="-90 0 0" material="color: #10b981; shader: flat; opacity: 0.5" animation="property: scale; to: 3 3 3; dur: 1500; loop: true; dir: normal; delay: 500"></a-ring>
-    `;
-    
-    el.setAttribute('animation', `property: position; to: ${px} ${yPos + 0.15} ${pz}; dur: 2000; loop: true; dir: alternate; easing: easeInOutSine`);
-    el.setAttribute('position', `${px} ${yPos} ${pz}`);
-    return el;
-}
-
+/**
+ * Geçerli bacak için oku çizer. Ok stili,
+ * settings.js'teki getArrowStyle() ile belirlenir.
+ */
 function _drawArrows() {
-    const arrowsEl = _dom.arrows;
-    arrowsEl.innerHTML = '';
+    _dom.arrows.innerHTML = '';
     _activeArrows = [];
-    _currentTransformedPath = [];
 
     const leg = AppState.arLegs[AppState.legIdx];
     if (!leg || !leg.path || leg.path.length < 2) {
@@ -453,248 +511,248 @@ function _drawArrows() {
         return;
     }
 
-    const path = leg.path;
-    let arrowIndex = 0;
+    const style = (window.getArrowStyle && getArrowStyle()) || 'chevron';
 
-    let tAngle = 0;
-    let tOrigin = null;
-    
-    // Güncel kamera konumunu al
-    if (_dom.cam && _dom.cam.object3D) {
-        _camPosCache.x = _dom.cam.object3D.position.x;
-        _camPosCache.y = _dom.cam.object3D.position.y;
-        _camPosCache.z = _dom.cam.object3D.position.z;
-    }
-    
-    const start = _parsePos(path[0]);
-    tOrigin = start;
-    
-    if (AppState.legIdx > 0 && path.length > 1) {
-        const next = _parsePos(path[1]);
-        const origAngle = Math.atan2(next.x - start.x, next.z - start.z);
-        let camYRot = 0;
-        if (_dom.cam && _dom.cam.object3D) {
-            camYRot = _dom.cam.object3D.rotation.y;
-        }
-        tAngle = camYRot - origAngle + Math.PI;
+    switch (style) {
+        case 'strip':     _drawStripArrows(leg.path);    break;
+        case 'particles': _drawParticleArrows(leg.path); break;
+        case 'chevron':
+        default:          _drawChevronArrows(leg.path);  break;
     }
 
-    function transformPt(pt) {
-        if (!tOrigin) return pt;
-        const relX = pt.x - tOrigin.x;
-        const relZ = pt.z - tOrigin.z;
-        
-        // Sadece 2. bacak ve sonrasında dönüş (rotation) uyguluyoruz. İlk bacakta sadece öteleme (translation).
-        if (AppState.legIdx > 0) {
-            const cos = Math.cos(tAngle);
-            const sin = Math.sin(tAngle);
-            const rotX = relX * cos - relZ * sin;
-            const rotZ = relX * sin + relZ * cos;
-            return {
-                x: _camPosCache.x + rotX,
-                z: _camPosCache.z + rotZ
-            };
-        } else {
-            return {
-                x: _camPosCache.x + relX,
-                z: _camPosCache.z + relZ
-            };
-        }
-    }
-
-    let runningDist = 0;
-
-    for (let i = 1; i < path.length; i++) {
-        const prev = transformPt(_parsePos(path[i - 1]));
-        const curr = transformPt(_parsePos(path[i]));
-        
-        if (i === 1) _currentTransformedPath.push(prev);
-        _currentTransformedPath.push(curr);
-
-        const dx = curr.x - prev.x, dz = curr.z - prev.z;
-        const segLen = Math.hypot(dx, dz);
-        if (segLen < 0.001) continue;
-
-        const angleRad = Math.atan2(dx, dz);
-        const angleDeg = THREE.MathUtils.radToDeg(angleRad); // Plane için A-Frame Y dönüşü
-
-        // Segmentleri 0.5m parçalara böl (Culling için)
-        const chunkLen = 0.5;
-        const steps = Math.max(1, Math.round(segLen / chunkLen));
-
-        for (let j = 0; j < steps; j++) {
-            const t1 = j / steps;
-            const t2 = (j + 1) / steps;
-            
-            const p1x = prev.x + dx * t1, p1z = prev.z + dz * t1;
-            const p2x = prev.x + dx * t2, p2z = prev.z + dz * t2;
-            
-            const midX = (p1x + p2x) / 2;
-            const midZ = (p1z + p2z) / 2;
-            const realChunkLen = Math.hypot(p2x - p1x, p2z - p1z);
-
-            const beam = _createNeonBeamSegment(midX, midZ, angleDeg, realChunkLen, arrowIndex);
-            beam.distMark = runningDist + (segLen * t1);
-            arrowsEl.appendChild(beam.el);
-            _activeArrows.push(beam);
-            arrowIndex++;
-        }
-        runningDist += segLen;
-    }
-
-    // Son bacaksa Map Pin ekle
+    // Son bacaksa hedef Map Pin ekle
     if (AppState.legIdx === AppState.arLegs.length - 1) {
-        const finalPtRaw = _parsePos(path[path.length - 1]);
-        const finalPt = transformPt(finalPtRaw);
-        const pin = _createMapPin(finalPt.x, finalPt.z);
-        arrowsEl.appendChild(pin);
+        _placeMapPin(leg.path);
     }
 
     AppState.tickRafId = requestAnimationFrame(_tick);
 }
 
-/* ════════════════════════════════════════════════════
-   KONUm TAKİBİ (Tick Loop)
-════════════════════════════════════════════════════ */
-function _getProgress(camPos, pathPoints) {
-    let closestDist = Infinity;
-    let coveredUpTo = 0;
-    let runningLen  = 0;
-
-    for (let i = 1; i < pathPoints.length; i++) {
-        const a = pathPoints[i - 1], b = pathPoints[i];
-        const segLen = Math.hypot(b.x - a.x, b.z - a.z);
-        const t = Math.max(0, Math.min(1,
-            ((camPos.x - a.x) * (b.x - a.x) + (camPos.z - a.z) * (b.z - a.z))
-            / (segLen * segLen + 1e-10)
-        ));
-        const d = Math.hypot(
-            camPos.x - (a.x + t * (b.x - a.x)),
-            camPos.z - (a.z + t * (b.z - a.z))
-        );
-        if (d < closestDist) { closestDist = d; coveredUpTo = runningLen + t * segLen; }
-        runningLen += segLen;
-    }
-    return coveredUpTo;
+/* ── Ok Stili A: Google Chevron ── */
+function _drawChevronArrows(path) {
+    _forEachArrowPoint(path, ARROW_SPACING_M, (px, pz, angleDeg, idx) => {
+        const el = document.createElement('a-entity');
+        const yPos = _groundY + 0.02;
+        el.setAttribute('position', `${px} ${yPos} ${pz}`);
+        el.setAttribute('rotation', `0 ${angleDeg} 0`);
+        el.setAttribute('google-chevron', '');
+        _dom.arrows.appendChild(el);
+        _activeArrows.push({ el, index: idx, active: true, distMark: idx * ARROW_SPACING_M });
+    });
 }
 
-const TARGET_FPS = 30;
-const FRAME_INTERVAL = 1000 / TARGET_FPS;
-let _lastTickTime = 0;
-let _arrivalDebounceId = null; // Varış kontrolü için debounce
-const _camPosCache = new THREE.Vector3();
-const _dirCache = new THREE.Vector3();
+/* ── Ok Stili B: Waze Zemin Şeridi ── */
+function _drawStripArrows(path) {
+    _forEachSegment(path, (midX, midZ, angleDeg, segLen, idx) => {
+        const el = document.createElement('a-entity');
+        const yPos = _groundY + 0.008;
+        // Ana şerit
+        el.setAttribute('geometry', `primitive: plane; width: 0.45; height: ${segLen}`);
+        el.setAttribute('material', 'color: #1d4ed8; shader: flat; transparent: true; opacity: 0.75; side: double');
+        el.setAttribute('rotation', `-90 ${angleDeg} 0`);
+        el.setAttribute('position', `${midX} ${yPos} ${midZ}`);
+        el.classList.add('ar-strip-arrow');
+        _dom.arrows.appendChild(el);
+        _activeArrows.push({ el, index: idx, active: true, distMark: idx * 0.5 });
+    });
+}
+
+/* ── Ok Stili C: Akan Parçacıklar ── */
+function _drawParticleArrows(path) {
+    const PARTICLE_SPACING = 0.4;
+    _forEachArrowPoint(path, PARTICLE_SPACING, (px, pz, _angle, idx) => {
+        const el = document.createElement('a-sphere');
+        const yPos = _groundY + 0.04;
+        const delayMs = (idx % 8) * 120; // 8'li gruplar halinde animasyonlu dalga
+        el.setAttribute('position', `${px} ${yPos} ${pz}`);
+        el.setAttribute('radius', '0.055');
+        el.setAttribute('material', 'color: #06b6d4; shader: flat; transparent: true; opacity: 0.85');
+        el.setAttribute('animation', `property: position; to: ${px} ${yPos + 0.06} ${pz}; dur: 900; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
+        el.classList.add('ar-particle');
+        _dom.arrows.appendChild(el);
+        _activeArrows.push({ el, index: idx, active: true, distMark: idx * PARTICLE_SPACING });
+    });
+}
+
+/* ── Hedef Map Pin ── */
+function _placeMapPin(path) {
+    const lastRaw = _parsePos(path[path.length - 1]);
+    const px = lastRaw.x, pz = lastRaw.z;
+    const yBase = _groundY + 0.4;
+
+    const pin = document.createElement('a-entity');
+    pin.innerHTML = `
+        <a-cone position="0 -0.2 0" radius-bottom="0.02" radius-top="0.15" height="0.4"
+            material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9"
+            rotation="180 0 0"></a-cone>
+        <a-sphere position="0 0.1 0" radius="0.15"
+            material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9"></a-sphere>
+        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.22" rotation="-90 0 0"
+            material="color: #10b981; shader: flat"
+            animation="property: scale; to: 2.5 2.5 2.5; dur: 1500; loop: true; dir: normal"></a-ring>
+        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.22" rotation="-90 0 0"
+            material="color: #10b981; shader: flat; opacity: 0.4"
+            animation="property: scale; to: 3.5 3.5 3.5; dur: 1500; loop: true; dir: normal; delay: 500"></a-ring>
+    `;
+    pin.setAttribute('position', `${px} ${yBase} ${pz}`);
+    pin.setAttribute('animation', `property: position; to: ${px} ${yBase + 0.15} ${pz}; dur: 2000; loop: true; dir: alternate; easing: easeInOutSine`);
+    _dom.arrows.appendChild(pin);
+}
+
+/* ════════════════════════════════════════════════════
+   OK ITERASYON YARDIMCILARI (DRY — Tekrar Önleme)
+════════════════════════════════════════════════════ */
+
+/**
+ * Rota boyunca her spacingM metrede bir nokta için callback çağırır.
+ * @param {Array}    path     - config.js rota noktaları
+ * @param {number}   spacing  - Noktalar arası mesafe (metre)
+ * @param {Function} callback - (px, pz, angleDeg, index) => void
+ */
+function _forEachArrowPoint(path, spacing, callback) {
+    let arrowIdx = 0;
+    for (let i = 1; i < path.length; i++) {
+        const prev = _parsePos(path[i - 1]);
+        const curr = _parsePos(path[i]);
+        const dx = curr.x - prev.x, dz = curr.z - prev.z;
+        const segLen = Math.hypot(dx, dz);
+        if (segLen < 0.001) continue;
+
+        const angleRad = Math.atan2(dx, dz);
+        const angleDeg = THREE.MathUtils.radToDeg(angleRad) + 180;
+        const steps    = Math.max(1, Math.round(segLen / spacing));
+
+        const startJ = (i === 1) ? 0 : 1;
+        for (let j = startJ; j <= steps; j++) {
+            const t  = j / steps;
+            const px = prev.x + dx * t;
+            const pz = prev.z + dz * t;
+            callback(px, pz, angleDeg, arrowIdx);
+            arrowIdx++;
+        }
+    }
+}
+
+/**
+ * Rota boyunca her segment parçası için callback çağırır.
+ * Şerit (strip) stili gibi kesintisiz çizim gerektiren stiller için.
+ */
+function _forEachSegment(path, callback) {
+    const CHUNK = 0.5;
+    let segIdx = 0;
+    for (let i = 1; i < path.length; i++) {
+        const prev = _parsePos(path[i - 1]);
+        const curr = _parsePos(path[i]);
+        const dx = curr.x - prev.x, dz = curr.z - prev.z;
+        const segLen = Math.hypot(dx, dz);
+        if (segLen < 0.001) continue;
+
+        const angleRad = Math.atan2(dx, dz);
+        const angleDeg = THREE.MathUtils.radToDeg(angleRad);
+        const steps    = Math.max(1, Math.round(segLen / CHUNK));
+
+        for (let j = 0; j < steps; j++) {
+            const t1 = j / steps, t2 = (j + 1) / steps;
+            const midX = prev.x + dx * ((t1 + t2) / 2);
+            const midZ = prev.z + dz * ((t1 + t2) / 2);
+            const chunkLen = Math.hypot(dx * (t2 - t1), dz * (t2 - t1));
+            callback(midX, midZ, angleDeg, chunkLen, segIdx);
+            segIdx++;
+        }
+    }
+}
+
+/* ════════════════════════════════════════════════════
+   TICK DÖNGÜSÜ — 30 FPS Pozisyon / HUD Güncelleme
+════════════════════════════════════════════════════ */
+let _lastTickTime      = 0;
+let _arrivalDebounceId = null;
+const _camPosCache     = new THREE.Vector3();
 
 function _tick(time) {
     if (!AppState.arActive) return;
-    
+
     if (time - _lastTickTime < FRAME_INTERVAL) {
         AppState.tickRafId = requestAnimationFrame(_tick);
         return;
     }
     _lastTickTime = time;
 
-    const cam = _dom.cam.object3D;
-    cam.getWorldPosition(_camPosCache);
-    
-    // 1. Kusursuz Zemin Kilidi (Hit-Test kaldırıldı, Donanımsal Y=0 baz alınır)
-    if (_dom.scene.is('ar-mode')) {
-        // local-floor aktifse kamera CAMERA_HEIGHT_THRESHOLD metrenin üzerindedir (fiziksel boy).
-        if (_camPosCache.y > CAMERA_HEIGHT_THRESHOLD) {
-            _groundY = 0; // %100 Zemine oturur, Lazer okuma hatası bitti.
-        } else {
-            _groundY = _camPosCache.y - AVG_HUMAN_HEIGHT_M; // Fallback
-        }
-    }
-    
+    // Kamera pozisyonunu önbelleğe al
+    _dom.cam.object3D.getWorldPosition(_camPosCache);
 
-    /* Three.js Optimizasyonu: Zemin Takibi ve Wave (Dalga) animasyonları */
+    // Zemin kilidi — local-floor aktifse kamera fiziksel boyda
+    if (_dom.scene.is('ar-mode')) {
+        _groundY = _camPosCache.y > CAMERA_HEIGHT_THRESHOLD
+            ? 0
+            : _camPosCache.y - AVG_HUMAN_HEIGHT_M;
+    }
+
+    // Ok öğelerini zemine sabitle (jitter önleme) + Frustum culling
     const now = Date.now();
     for (let i = 0; i < _activeArrows.length; i++) {
         const arrow = _activeArrows[i];
-        if (arrow.el.object3D) {
-            // SADECE Nefes Alma (Opacity) dalgası
-            const wave = Math.sin((now * 0.005) - (arrow.index * 0.4));
-            const op = 0.6 + (wave * 0.4);
-            
-            // Güvenli Mesh ve Material Erişimi
-            const mesh = arrow.el.getObject3D('mesh');
-            if (mesh && mesh.material) {
-                mesh.material.opacity = op;
-            }
-            
-            // Jitter'ı engellemek için okları dümdüz _groundY'ye çak
-            arrow.el.object3D.position.y = _groundY + GROUND_ARROW_OFFSET;
+        if (!arrow.el.object3D) continue;
 
-            // Frustum Culling & Active Check
-            if (arrow.active) {
-                const dist = Math.hypot(_camPosCache.x - arrow.el.object3D.position.x, _camPosCache.z - arrow.el.object3D.position.z);
-                arrow.el.object3D.visible = (dist < ARROW_CULL_DISTANCE_M);
-            }
+        arrow.el.object3D.position.y = _groundY + GROUND_ARROW_OFFSET;
+
+        if (arrow.active) {
+            const d = Math.hypot(
+                _camPosCache.x - arrow.el.object3D.position.x,
+                _camPosCache.z - arrow.el.object3D.position.z
+            );
+            arrow.el.object3D.visible = (d < ARROW_CULL_DISTANCE_M);
+        }
+
+        // Chevron için opacity dalga animasyonu (Three.js direkt erişim — performanslı)
+        const mesh = arrow.el.getObject3D('mesh');
+        if (mesh && mesh.material) {
+            const wave = Math.sin((now * 0.004) - (arrow.index * 0.4));
+            mesh.material.opacity = 0.65 + wave * 0.3;
         }
     }
 
-    const inGrace = AppState.arStartTime ? (Date.now() - AppState.arStartTime) < GRACE_PERIOD_MS : true;
+    const inGrace = AppState.arStartTime
+        ? (Date.now() - AppState.arStartTime) < GRACE_PERIOD_MS
+        : true;
 
-    /* Pusula Hedefi Güncelle (İkinci Noktaya Bakış) */
-    if (_currentTransformedPath.length > 1) {
-        const nextPt = _currentTransformedPath[Math.min(1, _currentTransformedPath.length - 1)];
-        const relativeAngle = Math.atan2(nextPt.x - _camPosCache.x, nextPt.z - _camPosCache.z);
-        const rawDeg = THREE.MathUtils.radToDeg(relativeAngle);
+    // — Pedometer Tabanlı Mesafe Hesabı —
+    const curLeg = AppState.arLegs[AppState.legIdx];
+    const curLegTotalDist = curLeg ? _calcLegDistance(curLeg.path) : 0;
+    const remain = Math.max(0, curLegTotalDist - _legDistWalked);
+
+    // Kalan mesafe ≤ 0.5m → buton kilidi aç
+    const distToTurn = remain;
+
+    // Pusula: rotanın ilk iki noktasından yön hesapla (bacak başlarken sabit)
+    if (curLeg && curLeg.path && curLeg.path.length > 1) {
+        const p0 = _parsePos(curLeg.path[0]);
+        const p1 = _parsePos(curLeg.path[1]);
+        const routeAngle = Math.atan2(p1.x - p0.x, p1.z - p0.z);
+        const rawDeg = THREE.MathUtils.radToDeg(routeAngle);
         const targetDeg = rawDeg + COMPASS_CORRECTION_DEG;
-        
-        // Unwrap algoritması ile 360 derece fırıldak dönmesini (Spinning) engelliyoruz
         _lastCompassDeg = _unwrapAngle(targetDeg, _lastCompassDeg);
-        
         if (_dom.hudArrow) _dom.hudArrow.style.transform = `rotate(${_lastCompassDeg}deg)`;
     }
 
-    /* Gerçek hedefe olan (bacak bitişi) uzaklık */
-    let distToTurn = Infinity;
-    if (_currentTransformedPath.length > 0) {
-        const finalPt = _currentTransformedPath[_currentTransformedPath.length - 1];
-        distToTurn = Math.hypot(_camPosCache.x - finalPt.x, _camPosCache.z - finalPt.z);
-    }
+    _refreshHUD(distToTurn, remain);
 
-    /* Kalan mesafe hesabı (SADECE o anki bacağın (leg) mesafesi) */
-    let curLegTotalDist = 0;
-    if (_currentTransformedPath.length > 1) {
-        for (let i = 1; i < _currentTransformedPath.length; i++) {
-            const a = _currentTransformedPath[i - 1], b = _currentTransformedPath[i];
-            curLegTotalDist += Math.hypot(b.x - a.x, b.z - a.z);
+    // Geçilen okları gizle (pedometer covered)
+    for (let i = 0; i < _activeArrows.length; i++) {
+        const arrow = _activeArrows[i];
+        if (arrow.active && _legDistWalked > arrow.distMark + 1.0) {
+            arrow.el.setAttribute('visible', 'false');
+            arrow.active = false;
         }
     }
 
-    let covered = 0;
-    if (_currentTransformedPath.length > 1) {
-        covered = _getProgress(_camPosCache, _currentTransformedPath);
-    }
-    const remain = Math.max(0, curLegTotalDist - covered);
-
-    /* HUD metrik güncelle (Tek Fonksiyonda) */
-    _refreshHUDFromTick(distToTurn, remain);
-
-    /* Yerdeki Beam'lerin (Işık Hüzmelerinin) Culling İşlemi */
-    if (_activeArrows && _activeArrows.length > 0) {
-        for (let i = 0; i < _activeArrows.length; i++) {
-            const beam = _activeArrows[i];
-            // Eğer kullanıcının kat ettiği mesafe (covered), beam'in distMark'ından 1.5m fazlaysa (yani kullanıcı beam'i geçtiyse) beam'i gizle
-            if (beam.active && covered > beam.distMark + 1.5) {
-                beam.el.setAttribute('visible', 'false');
-                beam.active = false;
-            }
-        }
-    }
-
-    /* Dönüş uyarısı (Büyük ekran uyarıcı - Dalgalanmayı önleyen sabit hedef hesabı ile) */
     _handleTurnWarning(distToTurn);
 
-    /* Sonraki Bölüm butonu kilit açma (grace period dışında, 0.5m eşiğinde) */
     if (!inGrace) {
         _setArrivedBtnLocked(distToTurn > NEXT_SECTION_UNLOCK_DIST);
     }
 
-    /* Otomatik varış (son bacak) */
+    // Otomatik varış (son bacak)
     if (distToTurn < ARRIVAL_THRESHOLD && !inGrace && AppState.legIdx === AppState.arLegs.length - 1) {
         if (!_arrivalDebounceId) {
             _arrivalDebounceId = setTimeout(() => {
@@ -702,20 +760,20 @@ function _tick(time) {
                 _dom.scene.exitVR();
                 _showDone();
                 _arrivalDebounceId = null;
-            }, 500); // 500ms debounce
+            }, 500);
         }
         return;
-    } else {
-        if (_arrivalDebounceId) {
-            clearTimeout(_arrivalDebounceId);
-            _arrivalDebounceId = null;
-        }
+    } else if (_arrivalDebounceId) {
+        clearTimeout(_arrivalDebounceId);
+        _arrivalDebounceId = null;
     }
 
     AppState.tickRafId = requestAnimationFrame(_tick);
 }
 
-/* ── Dönüş Uyarısı ── */
+/* ════════════════════════════════════════════════════
+   DÖNÜŞ UYARISI
+════════════════════════════════════════════════════ */
 function _handleTurnWarning(distToEnd) {
     const nextLeg = AppState.arLegs[AppState.legIdx + 1];
     if (!nextLeg || distToEnd > TURN_WARN_DISTANCE || distToEnd <= 0.4) {
@@ -733,38 +791,40 @@ function _handleTurnWarning(distToEnd) {
 }
 
 function _showTurn(icon, text, dist) {
-    const iconEl  = _dom.turnIcon();
-    const textEl  = _dom.turnText();
-    const distEl  = _dom.turnDist();
-    const overlay = _dom.turnOverlay();
+    // Not: _dom.turnOverlay, .turnIcon, .turnText, .turnDist DOM elementleridir (fonksiyon değil)
+    const overlay = _dom.turnOverlay;
+    const iconEl  = _dom.turnIcon;
+    const textEl  = _dom.turnText;
+    const distEl  = _dom.turnDist;
 
-    if(iconEl) {
+    if (iconEl) {
         iconEl.innerHTML = `<i data-lucide="${icon}" width="36" height="36" style="color:white;"></i>`;
         iconEl.style.animation = `${icon.includes('left') ? 'bounceL' : 'bounceR'} .6s ease-in-out infinite alternate`;
     }
-    if(textEl) textEl.textContent = text;
-    if(distEl) distEl.textContent = dist ? `${Math.round(dist)}m sonra` : '';
+    if (textEl) textEl.textContent = text;
+    if (distEl) distEl.textContent = dist ? `${Math.round(dist)}m sonra` : '';
 
     if (overlay && !overlay.classList.contains('visible')) {
         overlay.classList.add('visible');
-        /* Haptic: dönüş uyarısı */
         vibrate(200);
-        if (window.lucide && iconEl) lucide.createIcons({root: iconEl});
+        if (window.lucide && iconEl) lucide.createIcons({ root: iconEl });
     }
 }
-function _hideTurn() { _dom.turnOverlay().classList.remove('visible'); }
+
+function _hideTurn() {
+    if (_dom.turnOverlay) _dom.turnOverlay.classList.remove('visible');
+}
 
 /* ════════════════════════════════════════════════════
    BİLGİ EKRANI (Asansör vb.)
 ════════════════════════════════════════════════════ */
 function _showInfoScreen(leg) {
-    const screen = _dom.infoScreen;
     const iconWrapper = document.getElementById('ais-step-icon');
     iconWrapper.innerHTML = `<i data-lucide="${leg.icon || 'info'}" width="38" height="38"></i>`;
     if (window.lucide) lucide.createIcons({ root: iconWrapper });
     document.getElementById('ais-title').textContent = leg.title || 'Bilgi';
 
-    const ul = document.getElementById('ais-lines');
+    const ul    = document.getElementById('ais-lines');
     ul.innerHTML = '';
     const lines = leg.lines?.length ? leg.lines : [leg.instruction || ''];
     lines.forEach((text, i) => {
@@ -779,10 +839,10 @@ function _showInfoScreen(leg) {
         ul.appendChild(li);
     });
 
-    screen.classList.add('visible');
+    _dom.infoScreen.classList.add('visible');
 }
 
-/* "Devam Et" butonu tıklaması (HTML'den çağrılır) */
+/* "Devam Et" butonu — HTML'den çağrılır */
 function onInfoContinue() {
     _dom.infoScreen.classList.remove('visible');
     AppState.legIdx++;
@@ -799,17 +859,16 @@ function onInfoContinue() {
     }
 }
 
-/* "Ulaştım" butonu tıklaması (HTML'den çağrılır) */
+/* "Sonraki Bölüm / Ulaştım" butonu — HTML'den çağrılır */
 function onArrived() {
     cancelAnimationFrame(AppState.tickRafId);
     _dom.scene.exitVR();
     _hideTurn();
-
-    /* Haptic: varış onayı */
     vibrate([100, 50, 100]);
 
     AppState.legIdx++;
     AppState.arStartTime = null;
+    _resetLegDistance(); // Adım sayacını sıfırla
 
     if (AppState.legIdx >= AppState.arLegs.length) {
         _showDone();
@@ -832,15 +891,13 @@ function _showDone() {
     const route = AppState.activeRoute;
     const legs  = AppState.arLegs;
 
-    /* Başlık */
     document.getElementById('done-head-sub').textContent =
         route.block ? `${route.block}${route.floor ? ', ' + route.floor : ''}` : 'Navigasyon tamamlandı';
     document.getElementById('done-route-name').textContent = route.name;
     document.getElementById('done-route-loc').textContent  = route.desc || '';
 
-    /* İstatistikler */
-    const totalDist = legs.reduce((acc, l) => acc + (l.path ? l.path.length : 0), 0);
-    document.getElementById('done-dist').textContent = `${totalDist}m`;
+    const totalDist = legs.reduce((acc, l) => acc + _calcLegDistance(l.path), 0);
+    document.getElementById('done-dist').textContent = `${Math.round(totalDist)}m`;
 
     if (AppState.arStartTime) {
         const elapsed = Math.round((Date.now() - AppState.arStartTime) / 1000);
@@ -850,7 +907,6 @@ function _showDone() {
         document.getElementById('done-time').textContent = '—';
     }
 
-    /* Varış bilgisi */
     const infoBox = document.getElementById('done-info-box');
     if (route.detail) {
         const sentences = route.detail.split('.').filter(s => s.trim().length > 0);
@@ -863,24 +919,23 @@ function _showDone() {
         infoBox.style.display = 'none';
     }
 
-    /* Haptic: başarı */
     vibrate([150, 100, 150, 100, 300]);
-
     _dom.doneScreen.classList.add('visible');
 }
 
-/* ── Ana Menüye Dön (HTML'den çağrılır) ── */
+/* ── Ana Menüye Dön — HTML'den çağrılır ── */
 function returnToRoutes() {
     _dom.doneScreen.classList.remove('visible');
     renderList();
     showScreen('s-routes');
 }
 
-/* ── AR'dan çık (Geri butonu, HTML'den çağrılır) ── */
+/* ── AR'dan çık (Geri butonu) — HTML'den çağrılır ── */
 function exitARToRoutes() {
     cancelAnimationFrame(AppState.tickRafId);
     _dom.scene.exitVR();
     _dom.infoScreen.classList.remove('visible');
+    _stopPedometer();
     renderList();
     showScreen('s-routes');
 }

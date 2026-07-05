@@ -345,7 +345,61 @@
             </div>
         </div>
         
+        <!-- Bölüm AR Ok Stili -->
+        <div class="settings-section">
+            <div class="settings-section-label">🎯 AR Ok Stili</div>
+            <p class="settings-section-desc">AR navigasyonda yerde görünen yön göstergelerinin stilini seçin.</p>
+            <div class="arrow-style-grid">
+                <!-- Chevron -->
+                <button id="arrow-style-chevron"
+                    class="arrow-style-card"
+                    aria-pressed="false"
+                    onclick="setArrowStyle('chevron')">
+                    <div class="arrow-style-preview">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Cpolygon points='30,4 52,36 42,36 30,18 18,36 8,36' fill='%230066ff' opacity='0.95'/%3E%3Cpolygon points='30,16 52,36 42,36 30,28 18,36 8,36' fill='%230066ff' opacity='0.7'/%3E%3C/svg%3E"
+                             alt="Chevron" class="arrow-style-img">
+                    </div>
+                    <div class="arrow-style-info">
+                        <span class="arrow-style-name">Google Chevron</span>
+                        <span class="arrow-style-desc">3D ok işaretçileri</span>
+                    </div>
+                    <div class="arrow-style-check"><i data-lucide="check" width="16" height="16"></i></div>
+                </button>
+                <!-- Şerit -->
+                <button id="arrow-style-strip"
+                    class="arrow-style-card"
+                    aria-pressed="false"
+                    onclick="setArrowStyle('strip')">
+                    <div class="arrow-style-preview">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect x='20' y='0' width='20' height='40' rx='4' fill='%231d4ed8' opacity='0.8'/%3E%3Crect x='28' y='4' width='4' height='8' rx='1' fill='white' opacity='0.7'/%3E%3Crect x='28' y='16' width='4' height='8' rx='1' fill='white' opacity='0.7'/%3E%3Crect x='28' y='28' width='4' height='8' rx='1' fill='white' opacity='0.7'/%3E%3C/svg%3E"
+                             alt="Şerit" class="arrow-style-img">
+                    </div>
+                    <div class="arrow-style-info">
+                        <span class="arrow-style-name">Zemin Şeridi</span>
+                        <span class="arrow-style-desc">Waze tarzı yol çizgisi</span>
+                    </div>
+                    <div class="arrow-style-check"><i data-lucide="check" width="16" height="16"></i></div>
+                </button>
+                <!-- Parçacıklar -->
+                <button id="arrow-style-particles"
+                    class="arrow-style-card"
+                    aria-pressed="false"
+                    onclick="setArrowStyle('particles')">
+                    <div class="arrow-style-preview">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Ccircle cx='30' cy='8' r='4' fill='%2306b6d4' opacity='0.9'/%3E%3Ccircle cx='30' cy='20' r='4' fill='%2306b6d4' opacity='0.7'/%3E%3Ccircle cx='30' cy='32' r='4' fill='%2306b6d4' opacity='0.5'/%3E%3Ccircle cx='22' cy='14' r='2.5' fill='%2306b6d4' opacity='0.5'/%3E%3Ccircle cx='38' cy='26' r='2.5' fill='%2306b6d4' opacity='0.4'/%3E%3C/svg%3E"
+                             alt="Parçacık" class="arrow-style-img">
+                    </div>
+                    <div class="arrow-style-info">
+                        <span class="arrow-style-name">Akan Parçacıklar</span>
+                        <span class="arrow-style-desc">Futuristik parıltılı izler</span>
+                    </div>
+                    <div class="arrow-style-check"><i data-lucide="check" width="16" height="16"></i></div>
+                </button>
+            </div>
+        </div>
+        
         <!-- Bölüm B: İzin Yönetimi -->
+
         <div class="settings-section">
             <div class="settings-section-label">🔐 İzin Yönetimi</div>
             

@@ -421,7 +421,7 @@ function _createNeonBeamSegment(px, pz, angleDeg, length, index) {
     el.setAttribute('rotation', `-90 ${angleDeg} 0`);
     el.setAttribute('position', `${px} ${yPos} ${pz}`);
 
-    return { el, x: px, z: pz, active: true };
+    return { el, x: px, z: pz, active: true, index: index };
 }
 
 function _createMapPin(px, pz) {
@@ -454,35 +454,50 @@ function _drawArrows() {
     const path = leg.path;
     let arrowIndex = 0;
 
-    // Relatif Rota Hesaplaması (2. bacak ve sonrası için)
     let tAngle = 0;
     let tOrigin = null;
-    if (AppState.legIdx > 0) {
-        const start = _parsePos(path[0]);
+    
+    // Güncel kamera konumunu al
+    if (_dom.cam && _dom.cam.object3D) {
+        _camPosCache.x = _dom.cam.object3D.position.x;
+        _camPosCache.y = _dom.cam.object3D.position.y;
+        _camPosCache.z = _dom.cam.object3D.position.z;
+    }
+    
+    const start = _parsePos(path[0]);
+    tOrigin = start;
+    
+    if (AppState.legIdx > 0 && path.length > 1) {
         const next = _parsePos(path[1]);
         const origAngle = Math.atan2(next.x - start.x, next.z - start.z);
-        // Kameranın Y eksenindeki rotasyonu (radyan)
         let camYRot = 0;
         if (_dom.cam && _dom.cam.object3D) {
             camYRot = _dom.cam.object3D.rotation.y;
         }
-        // Kamera -Z yönüne bakar, dolayısıyla açısal fark:
         tAngle = camYRot - origAngle + Math.PI;
-        tOrigin = start;
     }
 
     function transformPt(pt) {
-        if (AppState.legIdx === 0 || !tOrigin) return pt;
+        if (!tOrigin) return pt;
         const relX = pt.x - tOrigin.x;
         const relZ = pt.z - tOrigin.z;
-        const cos = Math.cos(tAngle);
-        const sin = Math.sin(tAngle);
-        const rotX = relX * cos - relZ * sin;
-        const rotZ = relX * sin + relZ * cos;
-        return {
-            x: _camPosCache.x + rotX,
-            z: _camPosCache.z + rotZ
-        };
+        
+        // Sadece 2. bacak ve sonrasında dönüş (rotation) uyguluyoruz. İlk bacakta sadece öteleme (translation).
+        if (AppState.legIdx > 0) {
+            const cos = Math.cos(tAngle);
+            const sin = Math.sin(tAngle);
+            const rotX = relX * cos - relZ * sin;
+            const rotZ = relX * sin + relZ * cos;
+            return {
+                x: _camPosCache.x + rotX,
+                z: _camPosCache.z + rotZ
+            };
+        } else {
+            return {
+                x: _camPosCache.x + relX,
+                z: _camPosCache.z + relZ
+            };
+        }
     }
 
     let runningDist = 0;
@@ -592,21 +607,24 @@ function _tick(time) {
     for (let i = 0; i < _activeArrows.length; i++) {
         const arrow = _activeArrows[i];
         if (arrow.el.object3D) {
-            // SADECE Nefes Alma (Opacity) dalgası, Zıplama İptal
+            // SADECE Nefes Alma (Opacity) dalgası
             const wave = Math.sin((now * 0.005) - (arrow.index * 0.4));
             const op = 0.6 + (wave * 0.4);
             
-            if (arrow.el.object3D.children && arrow.el.object3D.children[0]) {
-                const planeMat = arrow.el.object3D.children[0].material;
-                if (planeMat) planeMat.opacity = op;
+            // Güvenli Mesh ve Material Erişimi
+            const mesh = arrow.el.getObject3D('mesh');
+            if (mesh && mesh.material) {
+                mesh.material.opacity = op;
             }
             
             // Jitter'ı engellemek için okları dümdüz _groundY'ye çak
             arrow.el.object3D.position.y = _groundY + GROUND_ARROW_OFFSET;
 
-            // Frustum Culling
-            const dist = Math.hypot(_camPosCache.x - arrow.el.object3D.position.x, _camPosCache.z - arrow.el.object3D.position.z);
-            arrow.el.object3D.visible = (dist < ARROW_CULL_DISTANCE_M);
+            // Frustum Culling & Active Check
+            if (arrow.active) {
+                const dist = Math.hypot(_camPosCache.x - arrow.el.object3D.position.x, _camPosCache.z - arrow.el.object3D.position.z);
+                arrow.el.object3D.visible = (dist < ARROW_CULL_DISTANCE_M);
+            }
         }
     }
 

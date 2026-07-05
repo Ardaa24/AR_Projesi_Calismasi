@@ -112,6 +112,7 @@ function _parsePos(pt) {
 }
 
 let _activeArrows = []; // Animasyon ve culling için ok listesi
+let _currentTransformedPath = []; // Cihaza göre hizalanmış gerçek fiziksel rota
 
 function _calcLegDistance(path) {
     if (!path || path.length < 2) return 0;
@@ -444,6 +445,7 @@ function _drawArrows() {
     const arrowsEl = _dom.arrows;
     arrowsEl.innerHTML = '';
     _activeArrows = [];
+    _currentTransformedPath = [];
 
     const leg = AppState.arLegs[AppState.legIdx];
     if (!leg || !leg.path || leg.path.length < 2) {
@@ -505,6 +507,10 @@ function _drawArrows() {
     for (let i = 1; i < path.length; i++) {
         const prev = transformPt(_parsePos(path[i - 1]));
         const curr = transformPt(_parsePos(path[i]));
+        
+        if (i === 1) _currentTransformedPath.push(prev);
+        _currentTransformedPath.push(curr);
+
         const dx = curr.x - prev.x, dz = curr.z - prev.z;
         const segLen = Math.hypot(dx, dz);
         if (segLen < 0.001) continue;
@@ -629,23 +635,12 @@ function _tick(time) {
     }
 
     const inGrace = AppState.arStartTime ? (Date.now() - AppState.arStartTime) < GRACE_PERIOD_MS : true;
-    const curLeg = AppState.arLegs[AppState.legIdx];
 
-    /* HUD Compass Arrow Update */
-    if (curLeg && curLeg.path && curLeg.path.length > 1) {
-        const nextPt = _parsePos(curLeg.path[Math.min(1, curLeg.path.length - 1)]);
-        const dx = nextPt.x - _camPosCache.x;
-        const dz = nextPt.z - _camPosCache.z;
-        
-        // Pusula Yön Matematiği
-        const targetAngleRad = Math.atan2(dx, -dz);
-        cam.getWorldDirection(_dirCache);
-        const camRotY = Math.atan2(_dirCache.x, -_dirCache.z); 
-
-        const relativeAngle = targetAngleRad - camRotY;
+    /* Pusula Hedefi Güncelle (İkinci Noktaya Bakış) */
+    if (_currentTransformedPath.length > 1) {
+        const nextPt = _currentTransformedPath[Math.min(1, _currentTransformedPath.length - 1)];
+        const relativeAngle = Math.atan2(nextPt.x - _camPosCache.x, nextPt.z - _camPosCache.z);
         const rawDeg = THREE.MathUtils.radToDeg(relativeAngle);
-        
-        // COMPASS_CORRECTION_DEG: pusula tam tersini gösterdiği için 180° - 45° = 135° düzeltme
         const targetDeg = rawDeg + COMPASS_CORRECTION_DEG;
         
         // Unwrap algoritması ile 360 derece fırıldak dönmesini (Spinning) engelliyoruz
@@ -656,20 +651,23 @@ function _tick(time) {
 
     /* Gerçek hedefe olan (bacak bitişi) uzaklık */
     let distToTurn = Infinity;
-    if (curLeg && curLeg.path && curLeg.path.length > 0) {
-        const finalPt = _parsePos(curLeg.path[curLeg.path.length - 1]);
+    if (_currentTransformedPath.length > 0) {
+        const finalPt = _currentTransformedPath[_currentTransformedPath.length - 1];
         distToTurn = Math.hypot(_camPosCache.x - finalPt.x, _camPosCache.z - finalPt.z);
     }
 
     /* Kalan mesafe hesabı (SADECE o anki bacağın (leg) mesafesi) */
     let curLegTotalDist = 0;
-    if (curLeg && curLeg.path) {
-        curLegTotalDist = _calcLegDistance(curLeg.path);
+    if (_currentTransformedPath.length > 1) {
+        for (let i = 1; i < _currentTransformedPath.length; i++) {
+            const a = _currentTransformedPath[i - 1], b = _currentTransformedPath[i];
+            curLegTotalDist += Math.hypot(b.x - a.x, b.z - a.z);
+        }
     }
 
     let covered = 0;
-    if (curLeg?.path) {
-        covered = _getProgress(_camPosCache, curLeg.path.map(_parsePos));
+    if (_currentTransformedPath.length > 1) {
+        covered = _getProgress(_camPosCache, _currentTransformedPath);
     }
     const remain = Math.max(0, curLegTotalDist - covered);
 

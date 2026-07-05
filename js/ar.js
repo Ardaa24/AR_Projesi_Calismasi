@@ -29,6 +29,8 @@ function _initDom() {
     _dom.turnIcon       = document.getElementById('ar-turn-icon');
     _dom.turnText       = document.getElementById('ar-turn-text');
     _dom.turnDist       = document.getElementById('ar-turn-dist');
+    _dom.mappingOverlay = document.getElementById('ar-mapping-overlay');
+    _dom.actionToast    = document.getElementById('ar-action-toast');
 }
 
 /* ── Sabitler ── */
@@ -283,7 +285,13 @@ function _onEnterAR() {
     if (_dom.arDest) _dom.arDest.textContent = AppState.activeRoute.name;
     _updateArrivedBtn();
 
-    setTimeout(_drawArrows, 1500);
+    /* Ortam Haritalama Bekleme Süresi (2 saniye) */
+    if (_dom.mappingOverlay) _dom.mappingOverlay.classList.add('visible');
+    
+    setTimeout(() => {
+        if (_dom.mappingOverlay) _dom.mappingOverlay.classList.remove('visible');
+        _drawArrows();
+    }, 2000);
 }
 
 function _onExitAR() {
@@ -300,6 +308,8 @@ function _onExitAR() {
     _dom.bottomPanel.style.display = 'none';
     _dom.turnOverlay.classList.remove('visible');
     if (_dom.hudArrow) _dom.hudArrow.style.display = 'none';
+    if (_dom.actionToast) _dom.actionToast.classList.remove('visible');
+    if (_dom.mappingOverlay) _dom.mappingOverlay.classList.remove('visible');
     _dom.arrows.innerHTML = '';
     _dom.scene.classList.remove('ar-active');
     _dom.overlay.classList.remove('ar-active');
@@ -379,25 +389,55 @@ function _setArrivedBtnLocked(locked) {
     if (!btn) return;
     if (locked) {
         btn.disabled = true;
+        btn.classList.remove('btn-glow');
+        if (_dom.actionToast) _dom.actionToast.classList.remove('visible');
     } else if (btn.disabled) {
         // Sadece durum değişiyorsa animasyonu tetikle (DOM thrashing önle)
         btn.disabled = false;
-        vibrate(50); // Çok kısa, non-intrusive haptic
+        btn.classList.add('btn-glow');
+        
+        if (_dom.actionToast) {
+            const isLast = AppState.legIdx === AppState.arLegs.length - 1;
+            const actionText = isLast ? "Hedefe ulaştınız, butona basın" : "Lütfen dönüp Sonraki Bölüm butonuna basın";
+            _dom.actionToast.innerHTML = `<i data-lucide="check-circle" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">${actionText}</span>`;
+            if (window.lucide) lucide.createIcons({ root: _dom.actionToast });
+            _dom.actionToast.classList.add('visible');
+        }
+
+        vibrate([100, 50, 100]); // Dikkat çekici titreşim
     }
 }
 
 /* ════════════════════════════════════════════════════
    OK ÇİZİMİ
 ════════════════════════════════════════════════════ */
-function _createChevron(px, pz, angleDeg, indexOffset) {
+function _createNeonBeamSegment(px, pz, angleDeg, length, index) {
     const el = document.createElement('a-entity');
-    const yPos = _groundY + CHEVRON_GROUND_INIT;
+    const yPos = _groundY + 0.05; // Zemin üstünde hafif havada
     
+    // Parçalı line (Plane)
+    el.setAttribute('geometry', `primitive: plane; width: 0.35; height: ${length}`);
+    el.setAttribute('material', 'color: #0ea5e9; shader: flat; transparent: true; opacity: 0.7; side: double');
+    el.setAttribute('rotation', `-90 ${angleDeg} 0`);
     el.setAttribute('position', `${px} ${yPos} ${pz}`);
-    el.setAttribute('rotation', `0 ${angleDeg} 0`);
-    el.setAttribute('google-chevron', '');
 
-    return { el, baseY: yPos, index: indexOffset };
+    return { el, x: px, z: pz, active: true };
+}
+
+function _createMapPin(px, pz) {
+    const el = document.createElement('a-entity');
+    const yPos = _groundY + 0.4;
+    
+    el.innerHTML = `
+        <a-cone position="0 -0.2 0" radius-bottom="0.02" radius-top="0.15" height="0.4" material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9" rotation="180 0 0"></a-cone>
+        <a-sphere position="0 0.1 0" radius="0.15" material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9"></a-sphere>
+        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.2" rotation="-90 0 0" material="color: #10b981; shader: flat" animation="property: scale; to: 2 2 2; dur: 1500; loop: true; dir: normal"></a-ring>
+        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.2" rotation="-90 0 0" material="color: #10b981; shader: flat; opacity: 0.5" animation="property: scale; to: 3 3 3; dur: 1500; loop: true; dir: normal; delay: 500"></a-ring>
+    `;
+    
+    el.setAttribute('animation', `property: position; to: ${px} ${yPos + 0.15} ${pz}; dur: 2000; loop: true; dir: alternate; easing: easeInOutSine`);
+    el.setAttribute('position', `${px} ${yPos} ${pz}`);
+    return el;
 }
 
 function _drawArrows() {
@@ -414,28 +454,79 @@ function _drawArrows() {
     const path = leg.path;
     let arrowIndex = 0;
 
+    // Relatif Rota Hesaplaması (2. bacak ve sonrası için)
+    let tAngle = 0;
+    let tOrigin = null;
+    if (AppState.legIdx > 0) {
+        const start = _parsePos(path[0]);
+        const next = _parsePos(path[1]);
+        const origAngle = Math.atan2(next.x - start.x, next.z - start.z);
+        // Kameranın Y eksenindeki rotasyonu (radyan)
+        let camYRot = 0;
+        if (_dom.cam && _dom.cam.object3D) {
+            camYRot = _dom.cam.object3D.rotation.y;
+        }
+        // Kamera -Z yönüne bakar, dolayısıyla açısal fark:
+        tAngle = camYRot - origAngle + Math.PI;
+        tOrigin = start;
+    }
+
+    function transformPt(pt) {
+        if (AppState.legIdx === 0 || !tOrigin) return pt;
+        const relX = pt.x - tOrigin.x;
+        const relZ = pt.z - tOrigin.z;
+        const cos = Math.cos(tAngle);
+        const sin = Math.sin(tAngle);
+        const rotX = relX * cos - relZ * sin;
+        const rotZ = relX * sin + relZ * cos;
+        return {
+            x: _camPosCache.x + rotX,
+            z: _camPosCache.z + rotZ
+        };
+    }
+
+    let runningDist = 0;
+
     for (let i = 1; i < path.length; i++) {
-        const prev = _parsePos(path[i - 1]);
-        const curr = _parsePos(path[i]);
+        const prev = transformPt(_parsePos(path[i - 1]));
+        const curr = transformPt(_parsePos(path[i]));
         const dx = curr.x - prev.x, dz = curr.z - prev.z;
         const segLen = Math.hypot(dx, dz);
         if (segLen < 0.001) continue;
 
         const angleRad = Math.atan2(dx, dz);
-        const angleDeg = THREE.MathUtils.radToDeg(angleRad) + 180;
-        const steps    = Math.max(1, Math.round(segLen / ARROW_SPACING_M));
+        const angleDeg = THREE.MathUtils.radToDeg(angleRad); // Plane için A-Frame Y dönüşü
 
-        const startJ = (i === 1) ? 0 : 1;
-        for (let j = startJ; j <= steps; j++) {
-            const t = j / steps;
-            const px = prev.x + dx * t;
-            const pz = prev.z + dz * t;
+        // Segmentleri 0.5m parçalara böl (Culling için)
+        const chunkLen = 0.5;
+        const steps = Math.max(1, Math.round(segLen / chunkLen));
 
-            const chevron = _createChevron(px, pz, angleDeg, arrowIndex);
-            arrowsEl.appendChild(chevron.el);
-            _activeArrows.push(chevron);
+        for (let j = 0; j < steps; j++) {
+            const t1 = j / steps;
+            const t2 = (j + 1) / steps;
+            
+            const p1x = prev.x + dx * t1, p1z = prev.z + dz * t1;
+            const p2x = prev.x + dx * t2, p2z = prev.z + dz * t2;
+            
+            const midX = (p1x + p2x) / 2;
+            const midZ = (p1z + p2z) / 2;
+            const realChunkLen = Math.hypot(p2x - p1x, p2z - p1z);
+
+            const beam = _createNeonBeamSegment(midX, midZ, angleDeg, realChunkLen, arrowIndex);
+            beam.distMark = runningDist + (segLen * t1);
+            arrowsEl.appendChild(beam.el);
+            _activeArrows.push(beam);
             arrowIndex++;
         }
+        runningDist += segLen;
+    }
+
+    // Son bacaksa Map Pin ekle
+    if (AppState.legIdx === AppState.arLegs.length - 1) {
+        const finalPtRaw = _parsePos(path[path.length - 1]);
+        const finalPt = transformPt(finalPtRaw);
+        const pin = _createMapPin(finalPt.x, finalPt.z);
+        arrowsEl.appendChild(pin);
     }
 
     AppState.tickRafId = requestAnimationFrame(_tick);
@@ -566,6 +657,18 @@ function _tick(time) {
 
     /* HUD metrik güncelle (Tek Fonksiyonda) */
     _refreshHUDFromTick(distToTurn, remain);
+
+    /* Yerdeki Beam'lerin (Işık Hüzmelerinin) Culling İşlemi */
+    if (_activeArrows && _activeArrows.length > 0) {
+        for (let i = 0; i < _activeArrows.length; i++) {
+            const beam = _activeArrows[i];
+            // Eğer kullanıcının kat ettiği mesafe (covered), beam'in distMark'ından 1.5m fazlaysa (yani kullanıcı beam'i geçtiyse) beam'i gizle
+            if (beam.active && covered > beam.distMark + 1.5) {
+                beam.el.setAttribute('visible', 'false');
+                beam.active = false;
+            }
+        }
+    }
 
     /* Dönüş uyarısı (Büyük ekran uyarıcı - Dalgalanmayı önleyen sabit hedef hesabı ile) */
     _handleTurnWarning(distToTurn);

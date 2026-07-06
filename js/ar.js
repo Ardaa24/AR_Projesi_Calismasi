@@ -490,15 +490,15 @@ function _drawArrows() {
         const camPos = new THREE.Vector3();
         cam.object3D.getWorldPosition(camPos);
 
-        const dir = new THREE.Vector3();
-        cam.object3D.getWorldDirection(dir);
-        // A-Frame'de cam.object3D bir THREE.Group'tur ve getWorldDirection +Z eksenini (kameranın arka tarafını) döndürür.
-        // İleri yönü bulmak için dir vektörünün tersini almalıyız, bu yüzden eksi işaretlerini kaldırıyoruz:
-        // Math.atan2(-(-dir.x), -(-dir.z)) => Math.atan2(dir.x, dir.z)
-        const heading = Math.atan2(dir.x, dir.z); // Radyan cinsinden heading
+        const camQuat = new THREE.Quaternion();
+        cam.object3D.getWorldQuaternion(camQuat);
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        euler.setFromQuaternion(camQuat);
+        
+        const headingDeg = THREE.MathUtils.radToDeg(euler.y);
 
         _dom.arrows.setAttribute('position', `${camPos.x} 0 ${camPos.z}`);
-        _dom.arrows.setAttribute('rotation', `0 ${THREE.MathUtils.radToDeg(heading)} 0`);
+        _dom.arrows.setAttribute('rotation', `0 ${headingDeg} 0`);
         _dom.arrows.object3D.updateMatrixWorld(true);
     }
 

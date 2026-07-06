@@ -60,6 +60,7 @@ const GROUND_ARROW_OFFSET      = 0.01;  // Z-fighting önleme boşluğu (metre)
 const CAMERA_HEIGHT_THRESHOLD  = 0.8;   // local-floor aktifse min. kamera yüksekliği (metre)
 const AVG_HUMAN_HEIGHT_M       = 1.5;   // Ortalama insan boyu (metre) — fallback
 const COMPASS_CORRECTION_DEG   = 135;   // Pusula görünüm düzeltmesi (derece)
+const DYNAMIC_COMPASS_CORRECTION_DEG = -45; // Dinamik pusula için (Lucide navigation ikonu varsayılan 45 derecedir)
 const TURN_KEYWORDS_LEFT       = ['sola'];
 const TURN_KEYWORDS_RIGHT      = ['sağa'];
 
@@ -506,7 +507,7 @@ function _drawArrows() {
     if (leg.path.length > 0) {
         const first = _parsePos(leg.path[0]);
         if (first.x !== 0 || first.z !== 0) {
-            leg.path.unshift("0 0 0");
+            leg.path.unshift({ pos: "0 0 0" });
         }
     }
 
@@ -774,7 +775,7 @@ function _tick(time) {
 
         // İzdüşümlerden açıyı hesapla (Yatay ekranda hedefin nerede olduğu)
         const angleRad = Math.atan2(dotRight, dotForward);
-        const angleDeg = THREE.MathUtils.radToDeg(angleRad) + COMPASS_CORRECTION_DEG;
+        const angleDeg = THREE.MathUtils.radToDeg(angleRad) + DYNAMIC_COMPASS_CORRECTION_DEG;
 
         _lastCompassDeg = _unwrapAngle(angleDeg, _lastCompassDeg);
         if (_dom.hudArrow) _dom.hudArrow.style.transform = `rotate(${_lastCompassDeg}deg)`;
@@ -907,14 +908,14 @@ function onInfoContinue() {
 /* "Sonraki Bölüm / Ulaştım" butonu — HTML'den çağrılır */
 function onArrived() {
     cancelAnimationFrame(AppState.tickRafId);
-    _dom.scene.exitVR();
     _hideTurn();
     vibrate([100, 50, 100]);
 
     AppState.legIdx++;
-    AppState.arStartTime = null;
+    AppState.arStartTime = Date.now();
 
     if (AppState.legIdx >= AppState.arLegs.length) {
+        if (_dom.scene && _dom.scene.exitVR) _dom.scene.exitVR();
         _showDone();
         return;
     }
@@ -922,9 +923,11 @@ function onArrived() {
     _updateArrivedBtn();
     const nextLeg = AppState.arLegs[AppState.legIdx];
     if (nextLeg.type === 'info') {
+        if (_dom.scene && _dom.scene.exitVR) _dom.scene.exitVR();
         setTimeout(() => _showInfoScreen(nextLeg), 300);
     } else {
-        setTimeout(_enterAR, 200);
+        // Kesintisiz geçiş: VR/AR oturumunu kapatmıyoruz, yeni okları doğrudan çiziyoruz.
+        _drawArrows();
     }
 }
 

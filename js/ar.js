@@ -286,6 +286,10 @@ let _xrRefSpace     = null;
 let _xrViewerSpace  = null;
 let _groundY        = -1.5; // Fallback zemin Y değeri
 
+let _turnDetecting   = false;
+let _turnTargetDir   = '';
+let _turnStartYaw    = 0;
+
 function _onEnterAR() {
     AppState.arActive    = true;
     AppState.arStartTime = AppState.arStartTime || Date.now();
@@ -681,6 +685,46 @@ function _tick(time) {
     // Kamera pozisyonunu önbelleğe al
     _dom.cam.object3D.getWorldPosition(_camPosCache);
 
+    // --- Jiroskop ile Dönüş Algılama (Calibration) ---
+    if (_turnDetecting) {
+        const camQuat = new THREE.Quaternion();
+        _dom.cam.object3D.getWorldQuaternion(camQuat);
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        euler.setFromQuaternion(camQuat);
+
+        let diff = euler.y - _turnStartYaw;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        let progress = 0;
+        if (_turnTargetDir === 'left') {
+            // Sola dönüş: Y ekseninde pozitif değişim
+            progress = Math.max(0, Math.min(100, Math.round((diff / (Math.PI / 2)) * 100)));
+        } else {
+            // Sağa dönüş: Y ekseninde negatif değişim
+            progress = Math.max(0, Math.min(100, Math.round((diff / (-Math.PI / 2)) * 100)));
+        }
+
+        if (_dom.turnText) {
+            _dom.turnText.textContent = _turnTargetDir === 'left' ? 'Sola Dönün ⬅️' : 'Sağa Dönün ➡️';
+        }
+        if (_dom.turnDist) {
+            _dom.turnDist.textContent = `Dönüş tamamlanıyor: %${progress}`;
+        }
+
+        // Tolerans: %75 ile %125 arasında (yaklaşık 70-110 derece dönüş)
+        if (progress >= 75 && progress <= 125) {
+            _turnDetecting = false;
+            vibrate([100, 50, 100]);
+            _hideTurn();
+            _drawArrows();
+            return;
+        }
+
+        AppState.tickRafId = requestAnimationFrame(_tick);
+        return;
+    }
+
     // Zemin kilidi — local-floor aktifse kamera fiziksel boyda
     if (_dom.scene.is('ar-mode')) {
         _groundY = _camPosCache.y > CAMERA_HEIGHT_THRESHOLD
@@ -858,7 +902,10 @@ function _showTurn(icon, text, dist) {
 }
 
 function _hideTurn() {
-    if (_dom.turnOverlay) _dom.turnOverlay.classList.remove('visible');
+    if (_dom.turnOverlay) {
+        _dom.turnOverlay.classList.remove('visible');
+        _dom.turnOverlay.classList.remove('guidance');
+    }
 }
 
 /* ════════════════════════════════════════════════════
@@ -926,8 +973,33 @@ function onArrived() {
         if (_dom.scene && _dom.scene.exitVR) _dom.scene.exitVR();
         setTimeout(() => _showInfoScreen(nextLeg), 300);
     } else {
-        // Kesintisiz geçiş: VR/AR oturumunu kapatmıyoruz, yeni okları doğrudan çiziyoruz.
-        _drawArrows();
+        // Sonraki bacak da AR! Kesintisiz geçiş yapıyoruz.
+        // Ancak önce bir dönüş talimatı olup olmadığını kontrol edeceğiz.
+        const ins = (nextLeg.instruction || '').toLowerCase();
+        const isLeft = TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw));
+        const isRight = TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw));
+
+        if (isLeft || isRight) {
+            _turnDetecting = true;
+            _turnTargetDir = isLeft ? 'left' : 'right';
+
+            // Mevcut kamera açısını referans al
+            const camQuat = new THREE.Quaternion();
+            _dom.cam.object3D.getWorldQuaternion(camQuat);
+            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+            euler.setFromQuaternion(camQuat);
+            _turnStartYaw = euler.y;
+
+            // Şık mavi kılavuz ekranını aç
+            if (_dom.turnOverlay) {
+                _dom.turnOverlay.classList.add('guidance');
+                _showTurn(isLeft ? 'corner-up-left' : 'corner-up-right', isLeft ? 'Sola Dönün' : 'Sağa Dönün', 0);
+            }
+            AppState.tickRafId = requestAnimationFrame(_tick);
+        } else {
+            // Dönüş yoksa doğrudan çiz
+            _drawArrows();
+        }
     }
 }
 

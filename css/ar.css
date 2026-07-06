@@ -167,6 +167,10 @@ a-scene.ar-active {
     z-index: 100;
 }
 #ar-turn.visible { display: flex; }
+#ar-turn.guidance {
+    background: rgba(29, 78, 216, 0.95);
+    box-shadow: 0 8px 24px rgba(29, 78, 216, 0.4);
+}
 
 .turn-icon {
     font-size: 32px;

@@ -676,6 +676,14 @@ function _tick(time) {
             : _camPosCache.y - AVG_HUMAN_HEIGHT_M;
     }
 
+    // Kameranın yerel koordinatlarını hesapla (Oklar "#ar-arrows" içinde yerel olduğu için)
+    const localCamPos = new THREE.Vector3();
+    if (_dom.arrows && _dom.arrows.object3D) {
+        _dom.arrows.object3D.worldToLocal(_camPosCache.clone(), localCamPos);
+    } else {
+        localCamPos.copy(_camPosCache);
+    }
+
     // Ok öğelerini zemine sabitle (jitter önleme) + Frustum culling
     const now = Date.now();
     for (let i = 0; i < _activeArrows.length; i++) {
@@ -685,9 +693,10 @@ function _tick(time) {
         arrow.el.object3D.position.y = _groundY + GROUND_ARROW_OFFSET;
 
         if (arrow.active) {
+            // Culling işlemi DÜNYA koordinatlarıyla DEĞİL, YEREL koordinatlarla yapılmalı!
             const d = Math.hypot(
-                _camPosCache.x - arrow.el.object3D.position.x,
-                _camPosCache.z - arrow.el.object3D.position.z
+                localCamPos.x - arrow.el.object3D.position.x,
+                localCamPos.z - arrow.el.object3D.position.z
             );
             arrow.el.object3D.visible = (d < ARROW_CULL_DISTANCE_M);
         }
@@ -709,13 +718,6 @@ function _tick(time) {
     let curLegTotalDist = 0;
     let covered = 0;
     let distToTurn = Infinity;
-
-    const localCamPos = new THREE.Vector3();
-    if (_dom.arrows && _dom.arrows.object3D) {
-        _dom.arrows.object3D.worldToLocal(_camPosCache.clone(), localCamPos);
-    } else {
-        localCamPos.copy(_camPosCache);
-    }
 
     if (curLeg && curLeg.path && curLeg.path.length > 0) {
         curLegTotalDist = _calcLegDistance(curLeg.path);

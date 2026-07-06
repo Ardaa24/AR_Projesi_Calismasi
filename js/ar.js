@@ -143,83 +143,28 @@ function _unwrapAngle(newAngle, lastAngle) {
 }
 
 /* ════════════════════════════════════════════════════
-   PEDOMETER — İVMEÖLÇER TABANLI ADIM SAYAR
-   Neden: Mobil WebXR, yürüme mesafesini (6DOF pozisyon)
-   güvenilir biçimde izleyemez. Google/Apple'ın mobil AR
-   navigasyonunda kullandığı yaklaşım budur.
+   VIO (KAMERA) TABANLI MESAFE TAKİBİ
 ════════════════════════════════════════════════════ */
-let _pedometerListener  = null;
-let _stepCount          = 0;
-let _legDistWalked      = 0; // Mevcut bacakta yürünen mesafe (metre)
-let _lastNetAccel       = 0; // Son karedeki net ivme büyüklüğü (gravity çıkarılmış)
-let _stepCooldownMs     = 0;
-const STEP_COOLDOWN_MS  = 350;  // Çift adım sayımını önlemek için minimum bekleme süresi (ms)
-const STEP_PEAK_THRESHOLD = 1.8; // Net ivme zirve eşiği (m/s²) — düşürülürse daha hassas
-const GRAVITY_MS2       = 9.81; // Standart yerçekimi ivmesi
+function _getProgress(localCamPos, pathPoints) {
+    let closestDist = Infinity;
+    let coveredUpTo = 0;
+    let runningLen  = 0;
 
- 
-function _onMotion(e) {
-    const accel = e.accelerationIncludingGravity;
-    if (!accel) return;
-
-    const nowMs = Date.now();
-    const magnitude = Math.hypot(accel.x ?? 0, accel.y ?? 0, accel.z ?? 0);
-    const netAccel  = Math.abs(magnitude - GRAVITY_MS2);
-
-    // Zirve geçişi: önceki değer eşiğin üstündeydi ve yeni değer düşüyor
-    if (_lastNetAccel > STEP_PEAK_THRESHOLD &&
-        netAccel < _lastNetAccel &&
-        nowMs > _stepCooldownMs) {
-        _stepCount++;
-        _legDistWalked = _stepCount * STEP_LENGTH_M;
-        _stepCooldownMs = nowMs + STEP_COOLDOWN_MS;
-        if (window.AR_DEBUG) console.log(`[Pedometer] Adım: ${_stepCount} | Yürünen: ${_legDistWalked.toFixed(2)}m`);
+    for (let i = 1; i < pathPoints.length; i++) {
+        const a = pathPoints[i - 1], b = pathPoints[i];
+        const segLen = Math.hypot(b.x - a.x, b.z - a.z);
+        const t = Math.max(0, Math.min(1,
+            ((localCamPos.x - a.x) * (b.x - a.x) + (localCamPos.z - a.z) * (b.z - a.z))
+            / (segLen * segLen + 1e-10)
+        ));
+        const d = Math.hypot(
+            localCamPos.x - (a.x + t * (b.x - a.x)),
+            localCamPos.z - (a.z + t * (b.z - a.z))
+        );
+        if (d < closestDist) { closestDist = d; coveredUpTo = runningLen + t * segLen; }
+        runningLen += segLen;
     }
-    _lastNetAccel = netAccel;
-}
-
-/** Pedometeri başlatır (iOS için izin isteyebilir) */
-async function _initPedometer() {
-    _stepCount      = 0;
-    _legDistWalked  = 0;
-    _lastNetAccel   = 0;
-    _stepCooldownMs = 0;
-
-    // iOS 13+: DeviceMotionEvent için ayrı izin gerekli
-    if (typeof DeviceMotionEvent !== 'undefined' &&
-        typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-            const result = await DeviceMotionEvent.requestPermission();
-            if (result !== 'granted') {
-                console.warn('Pedometer: Motion izni reddedildi.');
-                return;
-            }
-        } catch (err) {
-            console.warn('Pedometer: Motion izni isteği başarısız.', err);
-            return;
-        }
-    }
-
-    _pedometerListener = _onMotion;
-    window.addEventListener('devicemotion', _pedometerListener, { passive: true });
-    console.log('Pedometer: Başlatıldı.');
-}
-
-/** Pedometeri durdurur */
-function _stopPedometer() {
-    if (_pedometerListener) {
-        window.removeEventListener('devicemotion', _pedometerListener);
-        _pedometerListener = null;
-        console.log('Pedometer: Durduruldu.');
-    }
-}
-
-/** Her yeni bacakta adım sayacını sıfırlar */
-function _resetLegDistance() {
-    _stepCount      = 0;
-    _legDistWalked  = 0;
-    _lastNetAccel   = 0;
-    _stepCooldownMs = 0;
+    return coveredUpTo;
 }
 
 /* ════════════════════════════════════════════════════
@@ -375,7 +320,6 @@ function _onEnterAR() {
     if (_dom.mappingOverlay) _dom.mappingOverlay.classList.add('visible');
     setTimeout(() => {
         if (_dom.mappingOverlay) _dom.mappingOverlay.classList.remove('visible');
-        _initPedometer();
         _drawArrows();
     }, 2000);
 }
@@ -384,7 +328,6 @@ function _onExitAR() {
     AppState.arActive = false;
     document.body.style.background = '';
     cancelAnimationFrame(AppState.tickRafId);
-    _stopPedometer();
 
     if (_hitTestSource) {
         _hitTestSource.cancel();
@@ -411,7 +354,7 @@ let _lastHudIconName = '';
 /* AR_DEBUG modunu etkinleştirmek için konsolda: window.AR_DEBUG = true */
 let _debugEl = null;
 
-function _refreshHUD(distToTurn, remain) {
+function _refreshHUD(distToTurn, remain, covered = 0, localCamPos = new THREE.Vector3()) {
     const { hudDist, hudTime, hudNcLabel, hudNcAction, hudNcIcon } = _dom;
 
     if (hudDist)    hudDist.textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
@@ -434,7 +377,7 @@ function _refreshHUD(distToTurn, remain) {
             document.body.appendChild(_debugEl);
         }
         _debugEl.textContent =
-            `Steps:${_stepCount} | Walked:${_legDistWalked.toFixed(2)}m | Remain:${remain.toFixed(2)}m | Peak:${_lastNetAccel.toFixed(2)}`;
+            `World:(${_camPosCache.x.toFixed(2)}, ${_camPosCache.z.toFixed(2)}) | Local:(${localCamPos.x.toFixed(2)}, ${localCamPos.z.toFixed(2)}) | Covered:${covered.toFixed(2)}m | Remain:${remain.toFixed(2)}m`;
     } else if (_debugEl) {
         _debugEl.remove();
         _debugEl = null;
@@ -539,6 +482,21 @@ function _drawArrows() {
     if (!leg || !leg.path || leg.path.length < 2) {
         AppState.tickRafId = requestAnimationFrame(_tick);
         return;
+    }
+
+    // --- Göreceli Koordinat Hizalaması (Drift Çözümü) ---
+    const cam = _dom.cam;
+    if (cam && cam.object3D) {
+        const camPos = new THREE.Vector3();
+        cam.object3D.getWorldPosition(camPos);
+
+        const dir = new THREE.Vector3();
+        cam.object3D.getWorldDirection(dir);
+        const heading = Math.atan2(-dir.x, -dir.z); // Radyan cinsinden heading
+
+        _dom.arrows.setAttribute('position', `${camPos.x} 0 ${camPos.z}`);
+        _dom.arrows.setAttribute('rotation', `0 ${THREE.MathUtils.radToDeg(heading)} 0`);
+        _dom.arrows.object3D.updateMatrixWorld(true);
     }
 
     const style = (window.getArrowStyle && getArrowStyle()) || 'chevron';
@@ -746,13 +704,29 @@ function _tick(time) {
         ? (Date.now() - AppState.arStartTime) < GRACE_PERIOD_MS
         : true;
 
-    // — Pedometer Tabanlı Mesafe Hesabı —
+    // — VIO Kamera Tabanlı İlerleme Hesabı —
     const curLeg = AppState.arLegs[AppState.legIdx];
-    const curLegTotalDist = curLeg ? _calcLegDistance(curLeg.path) : 0;
-    const remain = Math.max(0, curLegTotalDist - _legDistWalked);
+    let curLegTotalDist = 0;
+    let covered = 0;
+    let distToTurn = Infinity;
 
-    // Kalan mesafe ≤ 0.5m → buton kilidi aç
-    const distToTurn = remain;
+    const localCamPos = new THREE.Vector3();
+    if (_dom.arrows && _dom.arrows.object3D) {
+        _dom.arrows.object3D.worldToLocal(_camPosCache.clone(), localCamPos);
+    } else {
+        localCamPos.copy(_camPosCache);
+    }
+
+    if (curLeg && curLeg.path && curLeg.path.length > 0) {
+        curLegTotalDist = _calcLegDistance(curLeg.path);
+        const pathPoints = curLeg.path.map(_parsePos);
+        covered = _getProgress(localCamPos, pathPoints);
+        
+        const finalPt = pathPoints[pathPoints.length - 1];
+        distToTurn = Math.hypot(localCamPos.x - finalPt.x, localCamPos.z - finalPt.z);
+    }
+
+    const remain = Math.max(0, curLegTotalDist - covered);
 
     // Pusula: rotanın ilk iki noktasından yön hesapla (bacak başlarken sabit)
     if (curLeg && curLeg.path && curLeg.path.length > 1) {
@@ -765,12 +739,12 @@ function _tick(time) {
         if (_dom.hudArrow) _dom.hudArrow.style.transform = `rotate(${_lastCompassDeg}deg)`;
     }
 
-    _refreshHUD(distToTurn, remain);
+    _refreshHUD(distToTurn, remain, covered, localCamPos);
 
-    // Geçilen okları gizle (pedometer covered)
+    // Geçilen okları gizle (VIO covered)
     for (let i = 0; i < _activeArrows.length; i++) {
         const arrow = _activeArrows[i];
-        if (arrow.active && _legDistWalked > arrow.distMark + 1.0) {
+        if (arrow.active && covered > arrow.distMark + 1.0) {
             arrow.el.setAttribute('visible', 'false');
             arrow.active = false;
         }
@@ -898,7 +872,6 @@ function onArrived() {
 
     AppState.legIdx++;
     AppState.arStartTime = null;
-    _resetLegDistance(); // Adım sayacını sıfırla
 
     if (AppState.legIdx >= AppState.arLegs.length) {
         _showDone();

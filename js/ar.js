@@ -151,36 +151,38 @@ function _unwrapAngle(newAngle, lastAngle) {
 let _pedometerListener  = null;
 let _stepCount          = 0;
 let _legDistWalked      = 0; // Mevcut bacakta yürünen mesafe (metre)
-let _lastAccelY         = 0;
+let _lastNetAccel       = 0; // Son karedeki net ivme büyüklüğü (gravity çıkarılmış)
 let _stepCooldownMs     = 0;
-const STEP_COOLDOWN_MS  = 350; // Çift adım sayımını önlemek için minimum bekleme süresi
+const STEP_COOLDOWN_MS  = 350;  // Çift adım sayımını önlemek için minimum bekleme süresi (ms)
+const STEP_PEAK_THRESHOLD = 1.8; // Net ivme zirve eşiği (m/s²) — düşürülürse daha hassas
+const GRAVITY_MS2       = 9.81; // Standart yerçekimi ivmesi
 
-/**
- * İvmeölçer verisinden adım çıkarır.
- * Dikey ivmedeki zirve geçişlerini tespit eder (threshold-crossing).
- */
+ 
 function _onMotion(e) {
     const accel = e.accelerationIncludingGravity;
     if (!accel) return;
 
-    const nowMs   = Date.now();
-    const currentY = accel.y;
+    const nowMs = Date.now();
+    const magnitude = Math.hypot(accel.x ?? 0, accel.y ?? 0, accel.z ?? 0);
+    const netAccel  = Math.abs(magnitude - GRAVITY_MS2);
 
-    // Zirve geçişi: negatiften pozitife geçiş + eşik + soğuma süresi
-    const threshold = 1.2; // m/s² — hassasiyet; düşürülürse daha sık adım sayar
-    if (_lastAccelY < -threshold && currentY > threshold && nowMs > _stepCooldownMs) {
+    // Zirve geçişi: önceki değer eşiğin üstündeydi ve yeni değer düşüyor
+    if (_lastNetAccel > STEP_PEAK_THRESHOLD &&
+        netAccel < _lastNetAccel &&
+        nowMs > _stepCooldownMs) {
         _stepCount++;
         _legDistWalked = _stepCount * STEP_LENGTH_M;
         _stepCooldownMs = nowMs + STEP_COOLDOWN_MS;
+        if (window.AR_DEBUG) console.log(`[Pedometer] Adım: ${_stepCount} | Yürünen: ${_legDistWalked.toFixed(2)}m`);
     }
-    _lastAccelY = currentY;
+    _lastNetAccel = netAccel;
 }
 
 /** Pedometeri başlatır (iOS için izin isteyebilir) */
 async function _initPedometer() {
-    _stepCount     = 0;
-    _legDistWalked = 0;
-    _lastAccelY    = 0;
+    _stepCount      = 0;
+    _legDistWalked  = 0;
+    _lastNetAccel   = 0;
     _stepCooldownMs = 0;
 
     // iOS 13+: DeviceMotionEvent için ayrı izin gerekli
@@ -214,8 +216,10 @@ function _stopPedometer() {
 
 /** Her yeni bacakta adım sayacını sıfırlar */
 function _resetLegDistance() {
-    _stepCount     = 0;
-    _legDistWalked = 0;
+    _stepCount      = 0;
+    _legDistWalked  = 0;
+    _lastNetAccel   = 0;
+    _stepCooldownMs = 0;
 }
 
 /* ════════════════════════════════════════════════════
@@ -404,11 +408,37 @@ function _onExitAR() {
 ════════════════════════════════════════════════════ */
 let _lastHudIconName = '';
 
+/* AR_DEBUG modunu etkinleştirmek için konsolda: window.AR_DEBUG = true */
+let _debugEl = null;
+
 function _refreshHUD(distToTurn, remain) {
     const { hudDist, hudTime, hudNcLabel, hudNcAction, hudNcIcon } = _dom;
 
     if (hudDist)    hudDist.textContent = remain < 1 ? '<1m' : `${Math.round(remain)}m`;
     if (hudNcLabel) hudNcLabel.textContent = remain < 1 ? '<1m kaldı' : `${Math.round(remain)}m kaldı`;
+
+    // — Debug Overlay (AR_DEBUG = true ise görünür) —
+    if (window.AR_DEBUG) {
+        if (!_debugEl) {
+            _debugEl = document.createElement('div');
+            _debugEl.id = 'ar-debug-overlay';
+            Object.assign(_debugEl.style, {
+                position: 'fixed', bottom: '140px', left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(0,0,0,0.75)', color: '#0f0',
+                fontFamily: 'monospace', fontSize: '12px',
+                padding: '6px 12px', borderRadius: '8px',
+                zIndex: '9999', pointerEvents: 'none',
+                whiteSpace: 'nowrap'
+            });
+            document.body.appendChild(_debugEl);
+        }
+        _debugEl.textContent =
+            `Steps:${_stepCount} | Walked:${_legDistWalked.toFixed(2)}m | Remain:${remain.toFixed(2)}m | Peak:${_lastNetAccel.toFixed(2)}`;
+    } else if (_debugEl) {
+        _debugEl.remove();
+        _debugEl = null;
+    }
 
     const estSec = Math.ceil(remain * 1.5);
     if (hudTime) hudTime.textContent = estSec >= 60

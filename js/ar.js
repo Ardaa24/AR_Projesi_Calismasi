@@ -467,9 +467,9 @@ function _setArrivedBtnLocked(locked) {
             let turnText = '';
             if (nextLeg && nextLeg.instruction) {
                 const ins = nextLeg.instruction.toLowerCase();
-                if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
+                if (ins.includes('sol')) {
                     turnText = 'sola ';
-                } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
+                } else if (ins.includes('sağ')) {
                     turnText = 'sağa ';
                 }
             }

@@ -502,6 +502,14 @@ function _drawArrows() {
         _dom.arrows.object3D.updateMatrixWorld(true);
     }
 
+    // Yere tam oturması ve okların ayak ucundan (kamera altından) başlaması için
+    if (leg.path.length > 0) {
+        const first = _parsePos(leg.path[0]);
+        if (first.x !== 0 || first.z !== 0) {
+            leg.path.unshift("0 0 0");
+        }
+    }
+
     const style = (window.getArrowStyle && getArrowStyle()) || 'chevron';
 
     switch (style) {
@@ -732,14 +740,43 @@ function _tick(time) {
 
     const remain = Math.max(0, curLegTotalDist - covered);
 
-    // Pusula: rotanın ilk iki noktasından yön hesapla (bacak başlarken sabit)
-    if (curLeg && curLeg.path && curLeg.path.length > 1) {
-        const p0 = _parsePos(curLeg.path[0]);
-        const p1 = _parsePos(curLeg.path[1]);
-        const routeAngle = Math.atan2(p1.x - p0.x, p1.z - p0.z);
-        const rawDeg = THREE.MathUtils.radToDeg(routeAngle);
-        const targetDeg = rawDeg + COMPASS_CORRECTION_DEG;
-        _lastCompassDeg = _unwrapAngle(targetDeg, _lastCompassDeg);
+    // Pusula (Dinamik): Hedefe göre kameranın baktığı anlık yön arasındaki açıyı bul
+    if (curLeg && curLeg.path && curLeg.path.length > 0) {
+        // Hedef olarak rotanın SON noktasını (varış) kullanıyoruz
+        const rawPoints = curLeg.path.map(_parsePos);
+        const finalPt = rawPoints[rawPoints.length - 1];
+        const finalLocal = new THREE.Vector3(finalPt.x, 0, finalPt.z);
+        
+        // Okların bulunduğu kapsayıcıya göre hedefin DÜNYA koordinatını bul
+        const finalWorld = _dom.arrows && _dom.arrows.object3D 
+            ? _dom.arrows.object3D.localToWorld(finalLocal.clone()) 
+            : finalLocal.clone();
+
+        // Kameradan hedefe olan vektör
+        const toTarget = new THREE.Vector3(
+            finalWorld.x - _camPosCache.x,
+            0,
+            finalWorld.z - _camPosCache.z
+        );
+        if (toTarget.lengthSq() > 0.001) toTarget.normalize();
+
+        // Kameranın dünya uzayındaki yönelimi (Quaternion)
+        const camQuat = new THREE.Quaternion();
+        _dom.cam.object3D.getWorldQuaternion(camQuat);
+
+        // Kameranın ileri (-Z) ve sağ (+X) vektörleri
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camQuat);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camQuat);
+
+        // Hedef vektörünün kameranın sağına ve ilerisine olan izdüşümleri
+        const dotRight = toTarget.dot(right);
+        const dotForward = toTarget.dot(forward);
+
+        // İzdüşümlerden açıyı hesapla (Yatay ekranda hedefin nerede olduğu)
+        const angleRad = Math.atan2(dotRight, dotForward);
+        const angleDeg = THREE.MathUtils.radToDeg(angleRad) + COMPASS_CORRECTION_DEG;
+
+        _lastCompassDeg = _unwrapAngle(angleDeg, _lastCompassDeg);
         if (_dom.hudArrow) _dom.hudArrow.style.transform = `rotate(${_lastCompassDeg}deg)`;
     }
 

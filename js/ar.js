@@ -681,10 +681,9 @@ function _tick(time) {
 
     // Kameranın yerel koordinatlarını hesapla (Oklar "#ar-arrows" içinde yerel olduğu için)
     const localCamPos = new THREE.Vector3();
+    localCamPos.copy(_camPosCache);
     if (_dom.arrows && _dom.arrows.object3D) {
-        _dom.arrows.object3D.worldToLocal(_camPosCache.clone(), localCamPos);
-    } else {
-        localCamPos.copy(_camPosCache);
+        _dom.arrows.object3D.worldToLocal(localCamPos);
     }
 
     // Ok öğelerini zemine sabitle (jitter önleme) + Frustum culling

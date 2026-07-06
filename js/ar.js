@@ -50,10 +50,10 @@ function _initDom() {
 /* ════════════════════════════════════════════════════
    SABİTLER
 ════════════════════════════════════════════════════ */
-const ARRIVAL_THRESHOLD        = 0.5;   // Otomatik varış eşiği (metre)
+const ARRIVAL_THRESHOLD        = 1.0;   // Otomatik varış eşiği (metre)
 const TURN_WARN_DISTANCE       = 2.5;   // Dönüş uyarısı başlama mesafesi (metre)
 const GRACE_PERIOD_MS          = 2500;  // AR açıldıktan sonra ilk X ms içinde varış sayılmaz
-const NEXT_SECTION_UNLOCK_DIST = 0.5;   // Sonraki Bölüm butonu kilit açma mesafesi (metre)
+const NEXT_SECTION_UNLOCK_DIST = 1.0;   // Sonraki Bölüm butonu kilit açma mesafesi (metre)
 const ARROW_SPACING_M          = 0.8;   // Ok arası mesafe (metre)
 const ARROW_CULL_DISTANCE_M    = 10;    // Frustum culling: bu mesafenin ötesi gizlenir (metre)
 const GROUND_ARROW_OFFSET      = 0.01;  // Z-fighting önleme boşluğu (metre)
@@ -459,9 +459,24 @@ function _setArrivedBtnLocked(locked) {
 
     if (actionToast) {
         const isLast = AppState.legIdx === AppState.arLegs.length - 1;
-        const msg    = isLast
-            ? 'Hedefe ulaştınız, butona basın'
-            : 'Lütfen dönüp Sonraki Bölüm butonuna basın';
+        let msg = '';
+        if (isLast) {
+            msg = 'Hedefe ulaştınız, butona basın';
+        } else {
+            const nextLeg = AppState.arLegs[AppState.legIdx + 1];
+            let turnText = '';
+            if (nextLeg && nextLeg.instruction) {
+                const ins = nextLeg.instruction.toLowerCase();
+                if (TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw))) {
+                    turnText = 'sola ';
+                } else if (TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw))) {
+                    turnText = 'sağa ';
+                }
+            }
+            msg = turnText 
+                ? `Lütfen ${turnText}dönüp Sonraki Bölüm butonuna basın` 
+                : 'Lütfen Sonraki Bölüm butonuna basın';
+        }
         actionToast.innerHTML = `<i data-lucide="check-circle" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">${msg}</span>`;
         if (window.lucide) lucide.createIcons({ root: actionToast });
         actionToast.classList.add('visible');

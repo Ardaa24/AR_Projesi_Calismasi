@@ -587,14 +587,18 @@ function _drawStripArrows(path) {
         _activeArrows.push({ el, index: idx, active: true, distMark: idx * 0.5 });
     });
 
-    // Her 1.5m'de bir yön gösterici ok (chevron plane) ekle
+    const chevronSvg = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50,15 L95,75 L80,85 L50,45 L20,85 L5,75 Z' fill='%23ffffff' opacity='0.95'/%3E%3C/svg%3E";
+
+    // Her 1.5m'de bir yön gösterici ok (SVG plane) ekle
     _forEachArrowPoint(path, 1.5, (px, pz, angleDeg, idx) => {
         const yPos = _groundY + 0.015;
-        const el = document.createElement('a-entity');
+        const el = document.createElement('a-image');
         el.setAttribute('position', `${px} ${yPos} ${pz}`);
         el.setAttribute('rotation', `-90 ${angleDeg} 0`);
-        el.setAttribute('geometry', 'primitive: triangle; vertexA: 0 0.15 0; vertexB: -0.15 -0.15 0; vertexC: 0.15 -0.15 0');
-        el.setAttribute('material', 'color: #ffffff; shader: flat; transparent: true; opacity: 0.85; side: double');
+        el.setAttribute('src', chevronSvg);
+        el.setAttribute('width', '0.25');
+        el.setAttribute('height', '0.25');
+        el.setAttribute('material', 'shader: flat; transparent: true; depthTest: false');
         _dom.arrows.appendChild(el);
         _activeArrows.push({ el, index: idx, active: true, distMark: idx * 1.5 });
     });
@@ -630,6 +634,9 @@ function _placeMapPin(path) {
     const px = lastRaw.x, pz = lastRaw.z;
     const yBase = _groundY;
 
+    // Enterprise Kurumsal Map Pin SVG'si (Teardrop, temiz tasarım)
+    const pinSvg = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M50,5 C25.1,5 5,25.1 5,50 C5,75 50,115 50,115 C50,115 95,75 95,50 C95,25.1 74.9,5 50,5 Z' fill='%231A6FD4' /%3E%3Ccircle cx='50' cy='45' r='18' fill='%23ffffff' /%3E%3Ccircle cx='50' cy='45' r='8' fill='%231A6FD4' /%3E%3C/svg%3E";
+
     const pin = document.createElement('a-entity');
     pin.setAttribute('position', `${px} ${yBase} ${pz}`);
     
@@ -644,37 +651,10 @@ function _placeMapPin(path) {
             animation="property:scale; from:0.6 0.6 1; to:2.8 2.8 1; dur:2200; loop:true; easing:easeOutCubic; delay:900">
         </a-ring>
 
-        <!-- Zemin Sabit Disk -->
-        <a-circle radius="0.22" rotation="-90 0 0" position="0 0.008 0"
-            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.85">
-        </a-circle>
-        <a-circle radius="0.07" rotation="-90 0 0" position="0 0.01 0"
-            material="color:#ffffff; shader:flat; transparent:true; opacity:0.95">
-        </a-circle>
-
-        <!-- İnce Sütun (bağlantı hattı) -->
-        <a-cylinder radius="0.025" height="0.7" position="0 0.35 0"
-            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.3"
-            animation="property:material.opacity; from:0.15; to:0.45; dur:1800; loop:true; dir:alternate; easing:easeInOutSine">
-        </a-cylinder>
-
-        <!-- Beacon Disk (üst billboard, kameraya döner) -->
-        <a-entity position="0 0.75 0" look-at-y="">
-            <!-- Ana Disk -->
-            <a-circle radius="0.28"
-                material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.95"
-                animation="property:material.opacity; from:0.8; to:1; dur:1400; loop:true; dir:alternate; easing:easeInOutSine">
-            </a-circle>
-            <!-- Beyaz Kenar Halkası -->
-            <a-ring radius-inner="0.24" radius-outer="0.28" position="0 0 0.001"
-                material="color:#ffffff; shader:flat; transparent:true; opacity:0.9">
-            </a-ring>
-            <!-- Merkez Parlak Nokta -->
-            <a-circle radius="0.07" position="0 0 0.002"
-                material="color:#ffffff; shader:flat; transparent:true; opacity:0.95"
-                animation="property:scale; from:0.8 0.8 0.8; to:1.2 1.2 1.2; dur:1400; loop:true; dir:alternate; easing:easeInOutSine">
-            </a-circle>
-        </a-entity>
+        <!-- SVG Map Pin (billboard, zıplayan animasyon) -->
+        <a-image src="${pinSvg}" position="0 0.5 0" width="0.5" height="0.6" look-at-y=""
+            animation="property: position; to: 0 0.58 0; dur: 1200; loop: true; dir: alternate; easing: easeInOutSine">
+        </a-image>
     `;
     _dom.arrows.appendChild(pin);
 }

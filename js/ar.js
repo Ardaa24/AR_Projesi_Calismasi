@@ -286,10 +286,6 @@ let _xrRefSpace     = null;
 let _xrViewerSpace  = null;
 let _groundY        = -1.5; // Fallback zemin Y değeri
 
-let _turnDetecting   = false;
-let _turnTargetDir   = '';
-let _turnStartYaw    = 0;
-
 function _onEnterAR() {
     AppState.arActive    = true;
     AppState.arStartTime = AppState.arStartTime || Date.now();
@@ -459,24 +455,10 @@ function _setArrivedBtnLocked(locked) {
 
     if (actionToast) {
         const isLast = AppState.legIdx === AppState.arLegs.length - 1;
-        let msg = '';
-        if (isLast) {
-            msg = 'Hedefe ulaştınız, butona basın';
-        } else {
-            const nextLeg = AppState.arLegs[AppState.legIdx + 1];
-            let turnText = '';
-            if (nextLeg && nextLeg.instruction) {
-                const ins = nextLeg.instruction.toLowerCase();
-                if (ins.includes('sol')) {
-                    turnText = 'sola ';
-                } else if (ins.includes('sağ')) {
-                    turnText = 'sağa ';
-                }
-            }
-            msg = turnText 
-                ? `Lütfen ${turnText}dönüp Sonraki Bölüm butonuna basın` 
-                : 'Lütfen Sonraki Bölüm butonuna basın';
-        }
+        const msg = isLast
+            ? 'Hedefe ulaştınız, Sonraki Bölüm butonuna basın'
+            : 'Sonraki Bölüm butonuna basın';
+
         actionToast.innerHTML = `<i data-lucide="check-circle" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">${msg}</span>`;
         if (window.lucide) lucide.createIcons({ root: actionToast });
         actionToast.classList.add('visible');
@@ -593,28 +575,59 @@ function _drawParticleArrows(path) {
     });
 }
 
-/* ── Hedef Map Pin ── */
+/* ── Hedef Map Pin (Enterprise Holographic Pillar) ── */
 function _placeMapPin(path) {
     const lastRaw = _parsePos(path[path.length - 1]);
     const px = lastRaw.x, pz = lastRaw.z;
-    const yBase = _groundY + 0.4;
+    const yBase = _groundY;
 
     const pin = document.createElement('a-entity');
-    pin.innerHTML = `
-        <a-cone position="0 -0.2 0" radius-bottom="0.02" radius-top="0.15" height="0.4"
-            material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9"
-            rotation="180 0 0"></a-cone>
-        <a-sphere position="0 0.1 0" radius="0.15"
-            material="color: #0ea5e9; shader: flat; transparent: true; opacity: 0.9"></a-sphere>
-        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.22" rotation="-90 0 0"
-            material="color: #10b981; shader: flat"
-            animation="property: scale; to: 2.5 2.5 2.5; dur: 1500; loop: true; dir: normal"></a-ring>
-        <a-ring position="0 -0.38 0" radius-inner="0.15" radius-outer="0.22" rotation="-90 0 0"
-            material="color: #10b981; shader: flat; opacity: 0.4"
-            animation="property: scale; to: 3.5 3.5 3.5; dur: 1500; loop: true; dir: normal; delay: 500"></a-ring>
-    `;
     pin.setAttribute('position', `${px} ${yBase} ${pz}`);
-    pin.setAttribute('animation', `property: position; to: ${px} ${yBase + 0.15} ${pz}; dur: 2000; loop: true; dir: alternate; easing: easeInOutSine`);
+    
+    pin.innerHTML = `
+        <!-- Zemin Ripple Diski (2 adet iç içe, farklı hız) -->
+        <a-ring position="0 0.005 0" radius-inner="0" radius-outer="0.35"
+            rotation="-90 0 0"
+            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.6"
+            animation="property: scale; from: 1 1 1; to: 2.2 2.2 1; dur: 1800; loop: true; dir: normal; easing: easeOutQuad">
+        </a-ring>
+        <a-ring position="0 0.006 0" radius-inner="0" radius-outer="0.35"
+            rotation="-90 0 0"
+            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.35"
+            animation="property: scale; from: 1 1 1; to: 2.8 2.8 1; dur: 1800; loop: true; dir: normal; easing: easeOutQuad; delay: 600">
+        </a-ring>
+
+        <!-- Statik Zemin Diski (sabit, referans noktası) -->
+        <a-circle position="0 0.008 0" radius="0.2"
+            rotation="-90 0 0"
+            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.7">
+        </a-circle>
+        
+        <!-- Merkez parlak nokta -->
+        <a-circle position="0 0.01 0" radius="0.06"
+            rotation="-90 0 0"
+            material="color: #ffffff; shader: flat; transparent: true; opacity: 0.95">
+        </a-circle>
+
+        <!-- Holografik Sütun (şeffaf silindir) -->
+        <a-cylinder position="0 0.6 0" radius="0.04" height="1.2"
+            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.25"
+            animation="property: material.opacity; from: 0.15; to: 0.4; dur: 1500; loop: true; dir: alternate; easing: easeInOutSine">
+        </a-cylinder>
+        
+        <!-- Üst Diamond Marker -->
+        <a-box position="0 1.25 0" width="0.18" height="0.18" depth="0.18"
+            rotation="0 45 45"
+            material="color: #1A6FD4; emissive: #0044cc; emissiveIntensity: 0.6; transparent: true; opacity: 0.95; metalness: 0.3; roughness: 0.1"
+            animation="property: rotation; to: 0 405 45; dur: 4000; loop: true; easing: linear">
+        </a-box>
+        
+        <!-- Üst Diamond parıltı halkası -->
+        <a-ring position="0 1.25 0" radius-inner="0.15" radius-outer="0.2"
+            material="color: #ffffff; shader: flat; transparent: true; opacity: 0.5"
+            animation="property: scale; from: 0.8 0.8 0.8; to: 1.4 1.4 1.4; dur: 1200; loop: true; dir: alternate; easing: easeInOutSine">
+        </a-ring>
+    `;
     _dom.arrows.appendChild(pin);
 }
 
@@ -699,46 +712,6 @@ function _tick(time) {
 
     // Kamera pozisyonunu önbelleğe al
     _dom.cam.object3D.getWorldPosition(_camPosCache);
-
-    // --- Jiroskop ile Dönüş Algılama (Calibration) ---
-    if (_turnDetecting) {
-        const camQuat = new THREE.Quaternion();
-        _dom.cam.object3D.getWorldQuaternion(camQuat);
-        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-        euler.setFromQuaternion(camQuat);
-
-        let diff = euler.y - _turnStartYaw;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-
-        let progress = 0;
-        if (_turnTargetDir === 'left') {
-            // Sola dönüş: Y ekseninde pozitif değişim
-            progress = Math.max(0, Math.min(100, Math.round((diff / (Math.PI / 2)) * 100)));
-        } else {
-            // Sağa dönüş: Y ekseninde negatif değişim
-            progress = Math.max(0, Math.min(100, Math.round((diff / (-Math.PI / 2)) * 100)));
-        }
-
-        if (_dom.turnText) {
-            _dom.turnText.textContent = _turnTargetDir === 'left' ? 'Sola Dönün ⬅️' : 'Sağa Dönün ➡️';
-        }
-        if (_dom.turnDist) {
-            _dom.turnDist.textContent = `Dönüş tamamlanıyor: %${progress}`;
-        }
-
-        // Tolerans: %75 ile %125 arasında (yaklaşık 70-110 derece dönüş)
-        if (progress >= 75 && progress <= 125) {
-            _turnDetecting = false;
-            vibrate([100, 50, 100]);
-            _hideTurn();
-            _drawArrows();
-            return;
-        }
-
-        AppState.tickRafId = requestAnimationFrame(_tick);
-        return;
-    }
 
     // Zemin kilidi — local-floor aktifse kamera fiziksel boyda
     if (_dom.scene.is('ar-mode')) {
@@ -973,6 +946,10 @@ function onArrived() {
     _hideTurn();
     vibrate([100, 50, 100]);
 
+    if (_dom.actionToast) {
+        _dom.actionToast.classList.remove('visible');
+    }
+
     AppState.legIdx++;
     AppState.arStartTime = Date.now();
 
@@ -984,36 +961,20 @@ function onArrived() {
 
     _updateArrivedBtn();
     const nextLeg = AppState.arLegs[AppState.legIdx];
+    
     if (nextLeg.type === 'info') {
         if (_dom.scene && _dom.scene.exitVR) _dom.scene.exitVR();
         setTimeout(() => _showInfoScreen(nextLeg), 300);
     } else {
-        // Sonraki bacak da AR! Kesintisiz geçiş yapıyoruz.
-        // Ancak önce bir dönüş talimatı olup olmadığını kontrol edeceğiz.
-        const ins = (nextLeg.instruction || '').toLowerCase();
-        const isLeft = TURN_KEYWORDS_LEFT.some(kw => ins.includes(kw));
-        const isRight = TURN_KEYWORDS_RIGHT.some(kw => ins.includes(kw));
-
-        if (isLeft || isRight) {
-            _turnDetecting = true;
-            _turnTargetDir = isLeft ? 'left' : 'right';
-
-            // Mevcut kamera açısını referans al
-            const camQuat = new THREE.Quaternion();
-            _dom.cam.object3D.getWorldQuaternion(camQuat);
-            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-            euler.setFromQuaternion(camQuat);
-            _turnStartYaw = euler.y;
-
-            // Şık mavi kılavuz ekranını aç
-            if (_dom.turnOverlay) {
-                _dom.turnOverlay.classList.add('guidance');
-                _showTurn(isLeft ? 'corner-up-left' : 'corner-up-right', isLeft ? 'Sola Dönün' : 'Sağa Dönün', 0);
-            }
-            AppState.tickRafId = requestAnimationFrame(_tick);
-        } else {
-            // Dönüş yoksa doğrudan çiz
-            _drawArrows();
+        // Seamless geçiş: Okları anında çiz ve devam et
+        _drawArrows();
+        
+        // Yenilenme bildirimi için hafif vurgu
+        if (_dom.actionToast) {
+            _dom.actionToast.innerHTML = `<i data-lucide="refresh-cw" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">Rota yenilendi</span>`;
+            if (window.lucide) lucide.createIcons({ root: _dom.actionToast });
+            _dom.actionToast.classList.add('visible');
+            setTimeout(() => _dom.actionToast.classList.remove('visible'), 2000);
         }
     }
 }

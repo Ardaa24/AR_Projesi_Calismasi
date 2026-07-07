@@ -137,7 +137,7 @@
         </div>
     </header>
 
-    <div id="route-list" role="list" aria-label="Birimlerin listesi"></div>
+        <div id="route-list" role="list" aria-label="Birimlerin listesi"></div>
 </div>
 
 <!-- ════════════════════════════════════════════════════
@@ -224,7 +224,7 @@
 
   <!-- Dönüş Uyarısı -->
   <div id="ar-turn" role="alert" aria-live="assertive">
-      <div class="turn-icon" id="ar-turn-icon" aria-hidden="true">⬅️</div>
+      <div class="turn-icon" id="ar-turn-icon" aria-hidden="true"><i data-lucide="corner-up-left" width="36" height="36" style="color:white;"></i></div>
       <div class="turn-label" id="ar-turn-text">SOLA DÖN</div>
       <div class="turn-dist" id="ar-turn-dist"></div>
   </div>
@@ -254,7 +254,7 @@
         <div class="ais-logo-row">
             <img src="Assets/logo.png" alt="T.C. Sağlık Bakanlığı" width="38" height="38">
             <div class="ais-logo-divider" aria-hidden="true"></div>
-            <span class="ais-step-icon" id="ais-step-icon" aria-hidden="true">🛗</span>
+            <span class="ais-step-icon" id="ais-step-icon" aria-hidden="true"><i data-lucide="info" width="38" height="38"></i></span>
         </div>
         <h2 class="ais-title" id="ais-title">Bilgi</h2>
     </div>
@@ -279,7 +279,7 @@
 <div id="ar-done" role="main" aria-label="Navigasyon tamamlandı">
 
     <div class="done-head">
-        <div class="done-badge" aria-hidden="true">✓</div>
+        <div class="done-badge" aria-hidden="true"><i data-lucide="check" width="24" height="24" style="color:#10b981;"></i></div>
         <div>
             <div class="done-head-title">Hedefinize Ulaştınız</div>
             <div class="done-head-sub" id="done-head-sub">Navigasyon tamamlandı</div>
@@ -330,10 +330,13 @@
     <div class="settings-content">
         <!-- Bölüm A: Sistem Bilgisi -->
         <div class="settings-section">
-            <div class="settings-section-label">🏥 Uygulama Bilgisi</div>
+            <div class="settings-section-label">
+                <i data-lucide="building-2" width="14" height="14"></i>
+                Uygulama Bilgisi
+            </div>
             <div class="settings-row">
                 <div class="settings-row-label">Sürüm</div>
-                <div class="settings-row-value">v2.0.0</div>
+                <div class="settings-info-chip">v2.0.0</div>
             </div>
             <div class="settings-row">
                 <div class="settings-row-label">Kurum</div>
@@ -347,7 +350,10 @@
         
         <!-- Bölüm AR Ok Stili -->
         <div class="settings-section">
-            <div class="settings-section-label">🎯 AR Ok Stili</div>
+            <div class="settings-section-label">
+                <i data-lucide="layers" width="14" height="14"></i>
+                AR Ok Stili
+            </div>
             <p class="settings-section-desc">AR navigasyonda yerde görünen yön göstergelerinin stilini seçin.</p>
             <div class="arrow-style-grid">
                 <!-- Chevron -->
@@ -355,54 +361,43 @@
                     class="arrow-style-card"
                     aria-pressed="false"
                     onclick="setArrowStyle('chevron')">
-                    <div class="arrow-style-preview">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Cpolygon points='30,4 52,36 42,36 30,18 18,36 8,36' fill='%230066ff' opacity='0.95'/%3E%3Cpolygon points='30,16 52,36 42,36 30,28 18,36 8,36' fill='%230066ff' opacity='0.7'/%3E%3C/svg%3E"
-                             alt="Chevron" class="arrow-style-img">
-                    </div>
                     <div class="arrow-style-info">
-                        <span class="arrow-style-name">Google Chevron</span>
+                        <span class="arrow-style-name"><i data-lucide="chevrons-up" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"></i>Google Chevron</span>
                         <span class="arrow-style-desc">3D ok işaretçileri</span>
                     </div>
-                    <div class="arrow-style-check"><i data-lucide="check" width="16" height="16"></i></div>
+                    <div class="arrow-style-check"><i data-lucide="check-circle-2" width="20" height="20"></i></div>
                 </button>
                 <!-- Şerit -->
                 <button id="arrow-style-strip"
                     class="arrow-style-card"
                     aria-pressed="false"
                     onclick="setArrowStyle('strip')">
-                    <div class="arrow-style-preview">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect x='20' y='0' width='20' height='40' rx='4' fill='%231d4ed8' opacity='0.8'/%3E%3Crect x='28' y='4' width='4' height='8' rx='1' fill='white' opacity='0.7'/%3E%3Crect x='28' y='16' width='4' height='8' rx='1' fill='white' opacity='0.7'/%3E%3Crect x='28' y='28' width='4' height='8' rx='1' fill='white' opacity='0.7'/%3E%3C/svg%3E"
-                             alt="Şerit" class="arrow-style-img">
-                    </div>
                     <div class="arrow-style-info">
-                        <span class="arrow-style-name">Zemin Şeridi</span>
+                        <span class="arrow-style-name"><i data-lucide="grip-vertical" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"></i>Zemin Şeridi</span>
                         <span class="arrow-style-desc">Waze tarzı yol çizgisi</span>
                     </div>
-                    <div class="arrow-style-check"><i data-lucide="check" width="16" height="16"></i></div>
+                    <div class="arrow-style-check"><i data-lucide="check-circle-2" width="20" height="20"></i></div>
                 </button>
                 <!-- Parçacıklar -->
                 <button id="arrow-style-particles"
                     class="arrow-style-card"
                     aria-pressed="false"
                     onclick="setArrowStyle('particles')">
-                    <div class="arrow-style-preview">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Ccircle cx='30' cy='8' r='4' fill='%2306b6d4' opacity='0.9'/%3E%3Ccircle cx='30' cy='20' r='4' fill='%2306b6d4' opacity='0.7'/%3E%3Ccircle cx='30' cy='32' r='4' fill='%2306b6d4' opacity='0.5'/%3E%3Ccircle cx='22' cy='14' r='2.5' fill='%2306b6d4' opacity='0.5'/%3E%3Ccircle cx='38' cy='26' r='2.5' fill='%2306b6d4' opacity='0.4'/%3E%3C/svg%3E"
-                             alt="Parçacık" class="arrow-style-img">
-                    </div>
                     <div class="arrow-style-info">
-                        <span class="arrow-style-name">Akan Parçacıklar</span>
+                        <span class="arrow-style-name"><i data-lucide="sparkles" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"></i>Akan Parçacıklar</span>
                         <span class="arrow-style-desc">Futuristik parıltılı izler</span>
                     </div>
-                    <div class="arrow-style-check"><i data-lucide="check" width="16" height="16"></i></div>
+                    <div class="arrow-style-check"><i data-lucide="check-circle-2" width="20" height="20"></i></div>
                 </button>
             </div>
         </div>
         
         <!-- Bölüm B: İzin Yönetimi -->
-
         <div class="settings-section">
-            <div class="settings-section-label">🔐 İzin Yönetimi</div>
-            
+            <div class="settings-section-label">
+                <i data-lucide="shield" width="14" height="14"></i>
+                İzin Yönetimi
+            </div>
             <div class="settings-row-flex">
                 <div class="settings-row-info">
                     <i data-lucide="camera" width="18" height="18"></i>
@@ -417,22 +412,15 @@
         
         <!-- Bölüm C: Veri Temizleme -->
         <div class="settings-section">
-            <div class="settings-section-label">🗑️ Veri Temizleme</div>
+            <div class="settings-section-label">
+                <i data-lucide="database" width="14" height="14"></i>
+                Depolama
+            </div>
             <button onclick="clearSessionData()" class="btn-settings-danger">
                 <i data-lucide="trash-2" width="18" height="18"></i>
                 Oturum Verilerini Temizle
             </button>
             <p class="settings-desc" style="font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; text-align: center;">Kamera erişim izinlerini ve geçici uygulama verilerini sıfırlar. AR kamerası açılmazsa veya donma yaşarsanız kullanabilirsiniz.</p>
-        </div>
-
-        <!-- Bölüm D: Geliştirici Araçları [v2.0] -->
-        <div class="settings-section">
-            <div class="settings-section-label">🛠️ Geliştirici Araçları</div>
-            <button id="btn-toggle-debug" onclick="if(window.ARDebug){ARDebug.toggleCoordCapture()}else{showToast('Modül yüklenemedi')}" class="btn-settings-danger" style="background:rgba(88,28,135,0.12);color:#6d28d9;border:1.5px solid rgba(109,40,217,0.25);">
-                <i data-lucide="map-pin" width="18" height="18"></i>
-                Koordinat Yakalayıcı
-            </button>
-            <p class="settings-desc" style="font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; text-align: center;">AR aktifken dokunarak kamera konumunu panoya kopyalar. Gerçek hastane koordinatlarını ölçmek için kullanın.</p>
         </div>
     </div>
 </div>

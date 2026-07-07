@@ -42,7 +42,7 @@ const ROUTE_CATEGORIES = [
 const NAV_ROUTES = [
 
     /* ══════════════════════════════════════════════════════
-       ROTA 1 — Nöroloji Polikliniği  |  AR Aktif
+       ROTA 1 — Nöroloji Polikliniği (Girişten) |  AR Aktif
     ══════════════════════════════════════════════════════ */
     {
         id:       "noroloji",
@@ -55,31 +55,31 @@ const NAV_ROUTES = [
 
         /* Detay bilgileri */
         block:     "B Blok",
-        floor:     "1. Kat",
+        floor:     "Zemin Kat",
         room:      "Oda 112",
         hours:     "Pzt–Cum  08:00 – 17:00",
         phone: "(0324) 613 47 00",
         accessible: true,
         hasElevator: false,
-        desc: "B Blok, 1. Kat — Oda 112",
-        detail: "Nöroloji Polikliniği, beyin ve sinir sistemi hastalıklarının tanı ve tedavisi amacıyla hizmet vermektedir. Baş ağrısı, epilepsi, inme, MS ve hareket bozuklukları gibi durumlarda uzman hekimlerimiz ile randevu alabilirsiniz. Randevu için MHRS (182) veya e-Devlet üzerinden başvurabilirsiniz.",
+        desc: "B Blok, Zemin Kat — Oda 112",
+        detail: "Nöroloji Polikliniği, beyin ve sinir sistemi hastalıklarının tanı ve tedavisi amacıyla hizmet vermektedir. Hastane ana girişinden başlar.",
 
         legs: [
             {
                 type: "ar",
-                instruction: "Koridorda dümdüz 15 metre ilerleyin ⬆️",
-                path: Array.from({length: 15}, (_, i) => ({ pos: `0 0 -${i + 1}` }))
+                instruction: "Koridorda dümdüz 5.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
             },
             {
                 type: "ar",
-                instruction: "Sola dönüp 5 metre ilerleyin ⬅️",
-                path: Array.from({length: 5}, (_, i) => ({ pos: `0 0 -${i + 1}` }))
+                instruction: "Sola dönüp 13.5 metre ilerleyin ⬅️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -13.5" }]
             }
         ]
     },
 
     /* ══════════════════════════════════════════════════════
-       ROTA 2 — Engelli Erişim Tuvaleti  |  AR Aktif
+       ROTA 2 — Engelli Erişim Tuvaleti (Nöroloji'den) |  AR Aktif
     ══════════════════════════════════════════════════════ */
     {
         id:       "engelli-tuvaleti",
@@ -98,33 +98,24 @@ const NAV_ROUTES = [
         accessible: true,
         hasElevator: false,
         desc: "A Blok, Zemin Kat — Giriş Yanı",
-        detail: "Engelli erişimine uygun tuvalet birimi, tekerlekli sandalye kullananlar ve hareket kısıtlılığı olan bireyler için tasarlanmıştır. Geniş kapı açıklığı (≥ 90 cm), tutunma barları, acil çağrı butonu ve yeterli manevra alanına sahiptir. A Blok ana girişinin hemen yanında yer almaktadır.",
+        detail: "Engelli erişimine uygun tuvalet birimi. Bu rota Nöroloji Polikliniği'nden başlamaktadır.",
 
         legs: [
             {
                 type: "ar",
-                instruction: "Sağa dönüp 4 metre ilerleyin ➡️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" },
-                    { pos: "0 0 -3" },
-                    { pos: "0 0 -4" }
-                ]
+                instruction: "Koridorda dümdüz 13.5 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -13.5" }]
             },
             {
                 type: "ar",
-                instruction: "Dümdüz 3 metre ilerleyin — Tuvalet girişine ulaştınız ⬆️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" },
-                    { pos: "0 0 -3" }
-                ]
+                instruction: "Sola dönüp 5.25 metre ilerleyin ⬅️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
             }
         ]
     },
 
     /* ══════════════════════════════════════════════════════
-       ROTA 3 — Laboratuvar Birimi  |  AR Aktif — Asansörlü
+       ROTA 3 — Laboratuvar Birimi (Tuvalet'ten) |  AR Aktif — Asansörlü
     ══════════════════════════════════════════════════════ */
     {
         id:       "laboratuvar",
@@ -138,58 +129,45 @@ const NAV_ROUTES = [
         block:     "C Blok",
         floor:     "Alt Zemin Kat (−1)",
         room:      "Lab. Koridoru",
-        hours:     "Pzt–Cum  07:30 – 17:00  |  Cmt  08:00 – 13:00",
+        hours:     "Pzt–Cum  07:30 – 17:00",
         phone: "(0324) 613 47 00",
         accessible: true,
         hasElevator: true,
         desc: "C Blok, Alt Zemin Kat (−1) — Asansörlü Erişim",
-        detail: "Laboratuvar Birimi, kan tahlili, idrar tetkiki, mikrobiyoloji ve biyokimya analizlerini gerçekleştirmektedir. Alt zemin katta yer alır; erişim için asansör kullanılması gerekmektedir. Numune verme için sıra numaranızı girişteki dispenserdan alabilirsiniz. Aç karnına kan alımı için sabah randevusu önerilir.",
+        detail: "Laboratuvar Birimi. Bu rota Engelli Erişim Tuvaleti'nden başlamaktadır. Erişim için asansör kullanılması gerekmektedir.",
 
         legs: [
             {
                 type: "ar",
-                instruction: "Asansöre doğru 3 metre ilerleyin ⬆️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" },
-                    { pos: "0 0 -3" }
-                ]
+                instruction: "Koridorda dümdüz 17.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -17.25" }]
+            },
+            {
+                type: "ar",
+                instruction: "Sola dönüp 22.5 metre ilerleyin ⬅️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -22.5" }]
             },
             {
                 type: "info",
                 icon: "arrow-up-down",
-                title: "Asansöre Binin",
+                title: "Soldaki Asansöre Binin",
                 lines: [
-                    "Önünüzdeki asansöre girin.",
+                    "Önünüzdeki solda yer alan asansöre girin.",
                     "Panel üzerinden  −1  tuşuna basın.",
-                    "Kapı açılınca asansörden çıkıp sağa dönün.",
+                    "Kapı açılınca asansörden çıkıp düz ilerleyin.",
                     "Hazır olduğunuzda aşağıdaki 'AR'yi Başlat' butonuna basın."
                 ]
             },
             {
                 type: "ar",
-                instruction: "Asansörden çıkıp düz 4 metre ilerleyin ⬆️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" },
-                    { pos: "0 0 -3" },
-                    { pos: "0 0 -4" }
-                ]
-            },
-            {
-                type: "ar",
-                instruction: "Sola dönüp Laboratuvar girişine 3 metre ilerleyin ⬅️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" },
-                    { pos: "0 0 -3" }
-                ]
+                instruction: "Asansörden çıkıp düz 5.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
             }
         ]
     },
 
     /* ══════════════════════════════════════════════════════
-       ROTA 4 — Danışma / Bilgilendirme Noktası  |  AR Aktif
+       ROTA 4 — Danışma Noktası (Laboratuvar'dan) |  AR Aktif
     ══════════════════════════════════════════════════════ */
     {
         id:       "danisma",
@@ -202,31 +180,40 @@ const NAV_ROUTES = [
 
         block:     "Ana Bina",
         floor:     "Zemin Kat",
-        room:      "Poliklinikler Giriş Kapısı Karşısı",
+        room:      "Giriş Holü",
         hours:     "Pzt–Cum  08:00 – 17:00",
         phone: "(0324) 613 47 00",
         accessible: true,
-        hasElevator: false,
+        hasElevator: true,
         desc: "Ana Bina, Zemin Kat — Giriş Holü",
-        detail: "Danışma ve Bilgilendirme Noktası, hastanenin tüm birimleri hakkında yönlendirme, randevu, sigorta ve genel hasta hizmetleri konusunda destek sağlamaktadır. Görevlilerimiz Türkçe, İngilizce ve Arapça dil desteği sunabilmektedir. Tekerlekli sandalye talebinde bu noktadan yararlanabilirsiniz.",
+        detail: "Danışma Noktası. Bu rota Laboratuvar Birimi'nden (-1. Kat) başlamaktadır ve asansör ile Zemin Kata çıkılır.",
 
         legs: [
             {
                 type: "ar",
-                instruction: "Giriş holüne doğru 3 metre ilerleyin ⬆️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" },
-                    { pos: "0 0 -3" }
+                instruction: "Koridorda dümdüz 5.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
+            },
+            {
+                type: "info",
+                icon: "arrow-up-down",
+                title: "Asansöre Binin",
+                lines: [
+                    "Önünüzdeki asansöre girin.",
+                    "Panel üzerinden Zemin Kat (0) tuşuna basın.",
+                    "Zemin katta asansörden inip navigasyonu başlatın.",
+                    "Hazır olduğunuzda aşağıdaki 'AR'yi Başlat' butonuna basın."
                 ]
             },
             {
                 type: "ar",
-                instruction: "Sağa dönüp Danışma masasına 2 metre ilerleyin ➡️",
-                path: [
-                    { pos: "0 0 -1" },
-                    { pos: "0 0 -2" }
-                ]
+                instruction: "Asansörden çıkıp düz 5.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
+            },
+            {
+                type: "ar",
+                instruction: "Sağa dönüp 22.5 metre ilerleyin ➡️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -22.5" }]
             }
         ]
     },

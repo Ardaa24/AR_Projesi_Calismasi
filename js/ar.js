@@ -96,8 +96,8 @@ AFRAME.registerComponent('google-chevron', {
         geometry.translate(0, yOffset, 0);
 
         const material = new THREE.MeshStandardMaterial({
-            color: 0x0066ff,
-            emissive: 0x0033ff,
+            color: 0x4285F4,
+            emissive: 0x2166D4,
             emissiveIntensity: 0.4,
             roughness: 0.1,
             metalness: 0.1,
@@ -493,6 +493,7 @@ let _activeArrows = [];
 function _drawArrows() {
     _dom.arrows.innerHTML = '';
     _activeArrows = [];
+    _destinationLabelEl = null; // Floating label referansını sıfırla
 
     const leg = AppState.arLegs[AppState.legIdx];
     if (!leg || !leg.path || leg.path.length < 2) {
@@ -556,52 +557,45 @@ function _drawChevronArrows(path) {
     });
 }
 
-/* ── Ok Stili B: Navigation Guidance Line (Şerit) ── */
+/* ── Ok Stili B: Apple Maps Flat Strip (Zemin Şeridi) ── */
 function _drawStripArrows(path) {
+    const STRIP_WIDTH      = 0.40;   // Ana şerit genişliği (metre)
+    const EDGE_WIDTH       = 0.48;   // Kenar yumuşatma genişliği (feathered edge)
+    const STRIP_COLOR      = '#4285F4';
+    const STRIP_OPACITY    = 0.70;
+    const EDGE_OPACITY     = 0.18;   // Kenar yumuşatma opaklığı
+    const OVERLAP_FACTOR   = 1.08;   // Segment birleşim overlap çarpanı
+
     _forEachSegment(path, (midX, midZ, angleDeg, segLen, idx) => {
         const yPos = _groundY + 0.008;
-        const delayMs = (idx % 5) * 180; // Kayan dalga efekti (UV offset simülasyonu)
+        const overlappedLen = segLen * OVERLAP_FACTOR; // Segment'ler arası boşluğu kapat
 
         const el = document.createElement('a-entity');
         el.setAttribute('position', `${midX} ${yPos} ${midZ}`);
         el.setAttribute('rotation', `0 ${angleDeg} 0`);
         el.classList.add('ar-strip-arrow');
 
-        // Ana Gövde (Şerit)
+        // Kenar Yumuşatma (Feathered Edge) — alttaki yarı saydam geniş katman
+        const edge = document.createElement('a-entity');
+        edge.setAttribute('geometry', `primitive: plane; width: ${EDGE_WIDTH}; height: ${overlappedLen}`);
+        edge.setAttribute('material', `color: ${STRIP_COLOR}; shader: flat; transparent: true; opacity: ${EDGE_OPACITY}; side: double`);
+        edge.setAttribute('rotation', '-90 0 0');
+        edge.setAttribute('position', '0 -0.001 0');
+
+        // Ana Gövde (Flat Strip) — sabit opacity, animasyonsuz
         const strip = document.createElement('a-entity');
-        strip.setAttribute('geometry', `primitive: plane; width: 0.35; height: ${segLen}`);
-        strip.setAttribute('material', 'color: #1A6FD4; shader: flat; transparent: true; opacity: 0.4; side: double');
+        strip.setAttribute('geometry', `primitive: plane; width: ${STRIP_WIDTH}; height: ${overlappedLen}`);
+        strip.setAttribute('material', `color: ${STRIP_COLOR}; shader: flat; transparent: true; opacity: ${STRIP_OPACITY}; side: double`);
         strip.setAttribute('rotation', '-90 0 0');
-        strip.setAttribute('animation', `property: material.opacity; from: 0.2; to: 0.7; dur: 900; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
-        
-        // Dış Glow (Kenar)
-        const glow = document.createElement('a-entity');
-        glow.setAttribute('geometry', `primitive: plane; width: 0.45; height: ${segLen}`);
-        glow.setAttribute('material', 'color: #ffffff; shader: flat; transparent: true; opacity: 0.15; side: double');
-        glow.setAttribute('rotation', '-90 0 0');
-        glow.setAttribute('position', '0 -0.001 0'); // Z-fighting önlemi
-        
-        el.appendChild(glow);
+
+        el.appendChild(edge);
         el.appendChild(strip);
         _dom.arrows.appendChild(el);
         _activeArrows.push({ el, index: idx, active: true, distMark: idx * 0.5 });
     });
 
-    const chevronSvg = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50,15 L95,75 L80,85 L50,45 L20,85 L5,75 Z' fill='%23ffffff' opacity='0.95'/%3E%3C/svg%3E";
-
-    // Her 1.5m'de bir yön gösterici ok (SVG plane) ekle
-    _forEachArrowPoint(path, 1.5, (px, pz, angleDeg, idx) => {
-        const yPos = _groundY + 0.015;
-        const el = document.createElement('a-image');
-        el.setAttribute('position', `${px} ${yPos} ${pz}`);
-        el.setAttribute('rotation', `-90 ${angleDeg} 0`);
-        el.setAttribute('src', chevronSvg);
-        el.setAttribute('width', '0.25');
-        el.setAttribute('height', '0.25');
-        el.setAttribute('material', 'shader: flat; transparent: true; depthTest: false');
-        _dom.arrows.appendChild(el);
-        _activeArrows.push({ el, index: idx, active: true, distMark: idx * 1.5 });
-    });
+    // Leading Arrow — Şeridin en ön ucuna TEK yön gösterici ok
+    _placeLeadingArrow(path);
 }
 
 /* ── Ok Stili C: Photon Stream (Akan Parçacıklar) ── */
@@ -616,7 +610,7 @@ function _drawParticleArrows(path) {
         
         el.setAttribute('position', `${px} ${yPos} ${pz}`);
         el.setAttribute('radius', '0.09'); // Daha belirgin ve büyük
-        el.setAttribute('material', 'color: #1A6FD4; shader: flat; transparent: true; opacity: 0.1');
+        el.setAttribute('material', 'color: #4285F4; shader: flat; transparent: true; opacity: 0.1');
         
         // Işık akışı (Photon Stream) animasyonları
         el.setAttribute('animation__opacity', `property: material.opacity; from: 0.1; to: 0.9; dur: 960; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
@@ -628,35 +622,116 @@ function _drawParticleArrows(path) {
     });
 }
 
-/* ── Hedef Map Pin (Enterprise Holographic Pillar) ── */
+/* ── Hedef Marker: Google Maps Ground Ring + Floating Label ── */
+let _destinationLabelEl = null; // Floating label referansı (HUD'dan mesafe güncellemesi için)
+
 function _placeMapPin(path) {
     const lastRaw = _parsePos(path[path.length - 1]);
     const px = lastRaw.x, pz = lastRaw.z;
     const yBase = _groundY;
 
-    // Enterprise Kurumsal Map Pin SVG'si (Teardrop, temiz tasarım)
-    const pinSvg = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M50,5 C25.1,5 5,25.1 5,50 C5,75 50,115 50,115 C50,115 95,75 95,50 C95,25.1 74.9,5 50,5 Z' fill='%231A6FD4' /%3E%3Ccircle cx='50' cy='45' r='18' fill='%23ffffff' /%3E%3Ccircle cx='50' cy='45' r='8' fill='%231A6FD4' /%3E%3C/svg%3E";
+    const RING_COLOR   = '#4285F4';
+    const LABEL_BG     = '#FFFFFF';
+    const LABEL_COLOR  = '#1C1C1E';
 
     const pin = document.createElement('a-entity');
     pin.setAttribute('position', `${px} ${yBase} ${pz}`);
-    
-    pin.innerHTML = `
-        <!-- Zemin Ripple (iki katman) -->
-        <a-ring radius-inner="0" radius-outer="0.4" rotation="-90 0 0" position="0 0.005 0"
-            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.7"
-            animation="property:scale; from:0.6 0.6 1; to:2.0 2.0 1; dur:2200; loop:true; easing:easeOutCubic">
-        </a-ring>
-        <a-ring radius-inner="0" radius-outer="0.4" rotation="-90 0 0" position="0 0.006 0"
-            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.4"
-            animation="property:scale; from:0.6 0.6 1; to:2.8 2.8 1; dur:2200; loop:true; easing:easeOutCubic; delay:900">
-        </a-ring>
 
-        <!-- SVG Map Pin (billboard, zıplayan animasyon) -->
-        <a-image src="${pinSvg}" position="0 0.5 0" width="0.5" height="0.6" look-at-y=""
-            animation="property: position; to: 0 0.58 0; dur: 1200; loop: true; dir: alternate; easing: easeInOutSine">
-        </a-image>
-    `;
+    // --- Zemin Ring (Outer) — sübtil pulse ---
+    const outerRing = document.createElement('a-ring');
+    outerRing.setAttribute('radius-inner', '0.25');
+    outerRing.setAttribute('radius-outer', '0.32');
+    outerRing.setAttribute('rotation', '-90 0 0');
+    outerRing.setAttribute('position', '0 0.005 0');
+    outerRing.setAttribute('material', `color:${RING_COLOR}; shader:flat; transparent:true; opacity:0.55`);
+    outerRing.setAttribute('animation', 'property:scale; from:1 1 1; to:1.06 1.06 1; dur:3000; loop:true; dir:alternate; easing:easeInOutSine');
+
+    // --- Center Dot — sabit referans noktası ---
+    const centerDot = document.createElement('a-circle');
+    centerDot.setAttribute('radius', '0.08');
+    centerDot.setAttribute('rotation', '-90 0 0');
+    centerDot.setAttribute('position', '0 0.006 0');
+    centerDot.setAttribute('material', `color:${RING_COLOR}; shader:flat; transparent:true; opacity:0.95`);
+
+    // --- Floating Label (hedef adı + mesafe) ---
+    const label = document.createElement('a-entity');
+    label.setAttribute('position', '0 0.70 0');
+    label.setAttribute('look-at-y', '');
+    label.setAttribute('animation', 'property:position; from:0 0.70 0; to:0 0.73 0; dur:2000; loop:true; dir:alternate; easing:easeInOutSine');
+
+    // Label arka plan (rounded rect) — A-Frame'de plane ile simüle
+    const labelBg = document.createElement('a-entity');
+    const routeName = AppState.activeRoute ? (AppState.activeRoute.shortName || AppState.activeRoute.name || 'Hedef') : 'Hedef';
+    // Metin uzunluğuna göre arka plan genişliğini hesapla
+    const textLen = routeName.length;
+    const bgWidth = Math.max(0.7, textLen * 0.055 + 0.35);
+    labelBg.setAttribute('geometry', `primitive: plane; width: ${bgWidth}; height: 0.22`);
+    labelBg.setAttribute('material', `color:${LABEL_BG}; shader:flat; transparent:true; opacity:0.92; side:double`);
+    labelBg.setAttribute('position', '0 0 0.001');
+
+    // Label metin (hedef adı)
+    const labelText = document.createElement('a-text');
+    labelText.setAttribute('value', routeName);
+    labelText.setAttribute('color', LABEL_COLOR);
+    labelText.setAttribute('align', 'center');
+    labelText.setAttribute('anchor', 'center');
+    labelText.setAttribute('width', '1.2');
+    labelText.setAttribute('font', 'roboto');
+    labelText.setAttribute('position', '0 0.025 0.002');
+
+    // Label alt metin (mesafe) — dinamik güncelleme için referans tutulur
+    const labelDist = document.createElement('a-text');
+    labelDist.setAttribute('value', '📍');
+    labelDist.setAttribute('color', '#6B7280');
+    labelDist.setAttribute('align', 'center');
+    labelDist.setAttribute('anchor', 'center');
+    labelDist.setAttribute('width', '0.8');
+    labelDist.setAttribute('font', 'roboto');
+    labelDist.setAttribute('position', '0 -0.040 0.002');
+    labelDist.className = 'dest-label-dist'; // CSS sınıfı ile tanımlama
+
+    label.appendChild(labelBg);
+    label.appendChild(labelText);
+    label.appendChild(labelDist);
+
+    pin.appendChild(outerRing);
+    pin.appendChild(centerDot);
+    pin.appendChild(label);
+
     _dom.arrows.appendChild(pin);
+
+    // Floating label referansını sakla (tick döngüsünde mesafe güncellemesi için)
+    _destinationLabelEl = labelDist;
+}
+
+/* ── Şerit Stili: Leading Arrow (şerit ucunda tek yön oku) ── */
+function _placeLeadingArrow(path) {
+    if (path.length < 2) return;
+
+    // Rotanın son iki noktası arasındaki yönü hesapla
+    const secondLast = _parsePos(path[path.length - 2]);
+    const last       = _parsePos(path[path.length - 1]);
+    const dx = last.x - secondLast.x;
+    const dz = last.z - secondLast.z;
+    const segLen = Math.hypot(dx, dz);
+    if (segLen < 0.01) return;
+
+    const angleRad = Math.atan2(dx, dz);
+    const angleDeg = THREE.MathUtils.radToDeg(angleRad) + 180;
+    const yPos = _groundY + 0.012;
+
+    // Leading ok SVG — temiz, minimal beyaz chevron
+    const arrowSvg = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50,10 L90,70 L72,80 L50,48 L28,80 L10,70 Z' fill='%23ffffff' opacity='0.9'/%3E%3C/svg%3E";
+
+    const el = document.createElement('a-image');
+    el.setAttribute('position', `${last.x} ${yPos} ${last.z}`);
+    el.setAttribute('rotation', `-90 ${angleDeg} 0`);
+    el.setAttribute('src', arrowSvg);
+    el.setAttribute('width', '0.30');
+    el.setAttribute('height', '0.30');
+    el.setAttribute('material', 'shader: flat; transparent: true; depthTest: false; opacity: 0.85');
+    _dom.arrows.appendChild(el);
+    _activeArrows.push({ el, index: 9999, active: true, distMark: Infinity });
 }
 
 /* ════════════════════════════════════════════════════
@@ -800,6 +875,12 @@ function _tick(time) {
     }
 
     const remain = Math.max(0, curLegTotalDist - covered);
+
+    // Floating label mesafe güncellemesi (Destination Marker)
+    if (_destinationLabelEl && distToTurn < Infinity) {
+        const distText = distToTurn < 1 ? '📍 <1m' : `📍 ${Math.round(distToTurn)}m`;
+        _destinationLabelEl.setAttribute('value', distText);
+    }
 
     // Pusula (Dinamik): Hedefe göre kameranın baktığı anlık yön arasındaki açıyı bul
     if (curLeg && curLeg.path && curLeg.path.length > 0) {

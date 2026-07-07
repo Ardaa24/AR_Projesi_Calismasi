@@ -111,6 +111,20 @@ AFRAME.registerComponent('google-chevron', {
     }
 });
 
+AFRAME.registerComponent('look-at-y', {
+    tick: function () {
+        const cam = document.getElementById('ar-cam');
+        if (!cam || !cam.object3D || !this.el.object3D) return;
+        const camPos = new THREE.Vector3();
+        cam.object3D.getWorldPosition(camPos);
+        if (this.el.object3D.parent) {
+            this.el.object3D.parent.worldToLocal(camPos);
+        }
+        camPos.y = this.el.object3D.position.y;
+        this.el.object3D.lookAt(camPos);
+    }
+});
+
 /* ════════════════════════════════════════════════════
    YARDIMCI FONKSİYONLAR
 ════════════════════════════════════════════════════ */
@@ -542,33 +556,68 @@ function _drawChevronArrows(path) {
     });
 }
 
-/* ── Ok Stili B: Waze Zemin Şeridi ── */
+/* ── Ok Stili B: Navigation Guidance Line (Şerit) ── */
 function _drawStripArrows(path) {
     _forEachSegment(path, (midX, midZ, angleDeg, segLen, idx) => {
-        const el = document.createElement('a-entity');
         const yPos = _groundY + 0.008;
-        // Ana şerit
-        el.setAttribute('geometry', `primitive: plane; width: 0.45; height: ${segLen}`);
-        el.setAttribute('material', 'color: #1d4ed8; shader: flat; transparent: true; opacity: 0.75; side: double');
-        el.setAttribute('rotation', `-90 ${angleDeg} 0`);
+        const delayMs = (idx % 5) * 180; // Kayan dalga efekti (UV offset simülasyonu)
+
+        const el = document.createElement('a-entity');
         el.setAttribute('position', `${midX} ${yPos} ${midZ}`);
+        el.setAttribute('rotation', `0 ${angleDeg} 0`);
         el.classList.add('ar-strip-arrow');
+
+        // Ana Gövde (Şerit)
+        const strip = document.createElement('a-entity');
+        strip.setAttribute('geometry', `primitive: plane; width: 0.35; height: ${segLen}`);
+        strip.setAttribute('material', 'color: #1A6FD4; shader: flat; transparent: true; opacity: 0.4; side: double');
+        strip.setAttribute('rotation', '-90 0 0');
+        strip.setAttribute('animation', `property: material.opacity; from: 0.2; to: 0.7; dur: 900; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
+        
+        // Dış Glow (Kenar)
+        const glow = document.createElement('a-entity');
+        glow.setAttribute('geometry', `primitive: plane; width: 0.45; height: ${segLen}`);
+        glow.setAttribute('material', 'color: #ffffff; shader: flat; transparent: true; opacity: 0.15; side: double');
+        glow.setAttribute('rotation', '-90 0 0');
+        glow.setAttribute('position', '0 -0.001 0'); // Z-fighting önlemi
+        
+        el.appendChild(glow);
+        el.appendChild(strip);
         _dom.arrows.appendChild(el);
         _activeArrows.push({ el, index: idx, active: true, distMark: idx * 0.5 });
     });
+
+    // Her 1.5m'de bir yön gösterici ok (chevron plane) ekle
+    _forEachArrowPoint(path, 1.5, (px, pz, angleDeg, idx) => {
+        const yPos = _groundY + 0.015;
+        const el = document.createElement('a-entity');
+        el.setAttribute('position', `${px} ${yPos} ${pz}`);
+        el.setAttribute('rotation', `-90 ${angleDeg} 0`);
+        el.setAttribute('geometry', 'primitive: triangle; vertexA: 0 0.15 0; vertexB: -0.15 -0.15 0; vertexC: 0.15 -0.15 0');
+        el.setAttribute('material', 'color: #ffffff; shader: flat; transparent: true; opacity: 0.85; side: double');
+        _dom.arrows.appendChild(el);
+        _activeArrows.push({ el, index: idx, active: true, distMark: idx * 1.5 });
+    });
 }
 
-/* ── Ok Stili C: Akan Parçacıklar ── */
+/* ── Ok Stili C: Photon Stream (Akan Parçacıklar) ── */
 function _drawParticleArrows(path) {
-    const PARTICLE_SPACING = 0.4;
+    const PARTICLE_SPACING = 0.6; // Daha seyrek
+    const GROUP_SIZE = 6;         // 6'lı akış grupları
+    
     _forEachArrowPoint(path, PARTICLE_SPACING, (px, pz, _angle, idx) => {
         const el = document.createElement('a-sphere');
-        const yPos = _groundY + 0.04;
-        const delayMs = (idx % 8) * 120; // 8'li gruplar halinde animasyonlu dalga
+        const yPos = _groundY + 0.04; // Y ekseninde sabit
+        const delayMs = (idx % GROUP_SIZE) * 160; 
+        
         el.setAttribute('position', `${px} ${yPos} ${pz}`);
-        el.setAttribute('radius', '0.055');
-        el.setAttribute('material', 'color: #06b6d4; shader: flat; transparent: true; opacity: 0.85');
-        el.setAttribute('animation', `property: position; to: ${px} ${yPos + 0.06} ${pz}; dur: 900; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
+        el.setAttribute('radius', '0.09'); // Daha belirgin ve büyük
+        el.setAttribute('material', 'color: #1A6FD4; shader: flat; transparent: true; opacity: 0.1');
+        
+        // Işık akışı (Photon Stream) animasyonları
+        el.setAttribute('animation__opacity', `property: material.opacity; from: 0.1; to: 0.9; dur: 960; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
+        el.setAttribute('animation__scale', `property: scale; from: 0.8 0.8 0.8; to: 1.2 1.2 1.2; dur: 960; loop: true; dir: alternate; easing: easeInOutSine; delay: ${delayMs}`);
+        
         el.classList.add('ar-particle');
         _dom.arrows.appendChild(el);
         _activeArrows.push({ el, index: idx, active: true, distMark: idx * PARTICLE_SPACING });
@@ -585,48 +634,47 @@ function _placeMapPin(path) {
     pin.setAttribute('position', `${px} ${yBase} ${pz}`);
     
     pin.innerHTML = `
-        <!-- Zemin Ripple Diski (2 adet iç içe, farklı hız) -->
-        <a-ring position="0 0.005 0" radius-inner="0" radius-outer="0.35"
-            rotation="-90 0 0"
-            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.6"
-            animation="property: scale; from: 1 1 1; to: 2.2 2.2 1; dur: 1800; loop: true; dir: normal; easing: easeOutQuad">
+        <!-- Zemin Ripple (iki katman) -->
+        <a-ring radius-inner="0" radius-outer="0.4" rotation="-90 0 0" position="0 0.005 0"
+            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.7"
+            animation="property:scale; from:0.6 0.6 1; to:2.0 2.0 1; dur:2200; loop:true; easing:easeOutCubic">
         </a-ring>
-        <a-ring position="0 0.006 0" radius-inner="0" radius-outer="0.35"
-            rotation="-90 0 0"
-            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.35"
-            animation="property: scale; from: 1 1 1; to: 2.8 2.8 1; dur: 1800; loop: true; dir: normal; easing: easeOutQuad; delay: 600">
+        <a-ring radius-inner="0" radius-outer="0.4" rotation="-90 0 0" position="0 0.006 0"
+            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.4"
+            animation="property:scale; from:0.6 0.6 1; to:2.8 2.8 1; dur:2200; loop:true; easing:easeOutCubic; delay:900">
         </a-ring>
 
-        <!-- Statik Zemin Diski (sabit, referans noktası) -->
-        <a-circle position="0 0.008 0" radius="0.2"
-            rotation="-90 0 0"
-            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.7">
+        <!-- Zemin Sabit Disk -->
+        <a-circle radius="0.22" rotation="-90 0 0" position="0 0.008 0"
+            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.85">
         </a-circle>
-        
-        <!-- Merkez parlak nokta -->
-        <a-circle position="0 0.01 0" radius="0.06"
-            rotation="-90 0 0"
-            material="color: #ffffff; shader: flat; transparent: true; opacity: 0.95">
+        <a-circle radius="0.07" rotation="-90 0 0" position="0 0.01 0"
+            material="color:#ffffff; shader:flat; transparent:true; opacity:0.95">
         </a-circle>
 
-        <!-- Holografik Sütun (şeffaf silindir) -->
-        <a-cylinder position="0 0.6 0" radius="0.04" height="1.2"
-            material="color: #1A6FD4; shader: flat; transparent: true; opacity: 0.25"
-            animation="property: material.opacity; from: 0.15; to: 0.4; dur: 1500; loop: true; dir: alternate; easing: easeInOutSine">
+        <!-- İnce Sütun (bağlantı hattı) -->
+        <a-cylinder radius="0.025" height="0.7" position="0 0.35 0"
+            material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.3"
+            animation="property:material.opacity; from:0.15; to:0.45; dur:1800; loop:true; dir:alternate; easing:easeInOutSine">
         </a-cylinder>
-        
-        <!-- Üst Diamond Marker -->
-        <a-box position="0 1.25 0" width="0.18" height="0.18" depth="0.18"
-            rotation="0 45 45"
-            material="color: #1A6FD4; emissive: #0044cc; emissiveIntensity: 0.6; transparent: true; opacity: 0.95; metalness: 0.3; roughness: 0.1"
-            animation="property: rotation; to: 0 405 45; dur: 4000; loop: true; easing: linear">
-        </a-box>
-        
-        <!-- Üst Diamond parıltı halkası -->
-        <a-ring position="0 1.25 0" radius-inner="0.15" radius-outer="0.2"
-            material="color: #ffffff; shader: flat; transparent: true; opacity: 0.5"
-            animation="property: scale; from: 0.8 0.8 0.8; to: 1.4 1.4 1.4; dur: 1200; loop: true; dir: alternate; easing: easeInOutSine">
-        </a-ring>
+
+        <!-- Beacon Disk (üst billboard, kameraya döner) -->
+        <a-entity position="0 0.75 0" look-at-y="">
+            <!-- Ana Disk -->
+            <a-circle radius="0.28"
+                material="color:#1A6FD4; shader:flat; transparent:true; opacity:0.95"
+                animation="property:material.opacity; from:0.8; to:1; dur:1400; loop:true; dir:alternate; easing:easeInOutSine">
+            </a-circle>
+            <!-- Beyaz Kenar Halkası -->
+            <a-ring radius-inner="0.24" radius-outer="0.28" position="0 0 0.001"
+                material="color:#ffffff; shader:flat; transparent:true; opacity:0.9">
+            </a-ring>
+            <!-- Merkez Parlak Nokta -->
+            <a-circle radius="0.07" position="0 0 0.002"
+                material="color:#ffffff; shader:flat; transparent:true; opacity:0.95"
+                animation="property:scale; from:0.8 0.8 0.8; to:1.2 1.2 1.2; dur:1400; loop:true; dir:alternate; easing:easeInOutSine">
+            </a-circle>
+        </a-entity>
     `;
     _dom.arrows.appendChild(pin);
 }

@@ -699,8 +699,8 @@ function _placeMapPin(path, signType) {
     if (signSrc) {
         const sign = document.createElement('a-image');
         sign.setAttribute('src', signSrc);
-        sign.setAttribute('width', '0.90');
-        sign.setAttribute('height', '0.60');
+        sign.setAttribute('width', '0.80');
+        sign.setAttribute('height', '0.80');
         sign.setAttribute('position', '0 0.70 0');
         sign.setAttribute('look-at-y', '');
         sign.setAttribute('animation', 'property:position; from:0 0.70 0; to:0 0.73 0; dur:2000; loop:true; dir:alternate; easing:easeInOutSine');

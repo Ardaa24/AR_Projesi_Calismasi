@@ -178,7 +178,7 @@ const NAV_ROUTES = [
                     "Önünüzdeki solda yer alan asansöre girin.",
                     "Panel üzerinden  −1  tuşuna basın.",
                     "Kapı açılınca asansörden çıkıp düz ilerleyin.",
-                    "Hazır olduğunuzda aşağıdaki 'AR'yi Başlat' butonuna basın."
+                    "Hazır olduğunuzda aşağıdaki butonuna basın."
                 ]
             },
             {
@@ -203,7 +203,7 @@ const NAV_ROUTES = [
                     "Önünüzdeki asansöre girin.",
                     "Panel üzerinden  −1  tuşuna basın.",
                     "Kapı açılınca asansörden çıkıp düz ilerleyin.",
-                    "Hazır olduğunuzda aşağıdaki 'AR'yi Başlat' butonuna basın."
+                    "Hazır olduğunuzda aşağıdaki butonuna basın."
                 ]
             },
             {

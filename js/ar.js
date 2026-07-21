@@ -53,7 +53,7 @@ function _initDom() {
 const ARRIVAL_THRESHOLD        = 1.0;   // Otomatik varış eşiği (metre)
 const TURN_WARN_DISTANCE       = 2.5;   // Dönüş uyarısı başlama mesafesi (metre)
 const GRACE_PERIOD_MS          = 2500;  // AR açıldıktan sonra ilk X ms içinde varış sayılmaz
-const NEXT_SECTION_UNLOCK_DIST = 1.0;   // Sonraki Bölüm butonu kilit açma mesafesi (metre)
+const GROUND_ZONE_RADIUS       = 1.2;   // Zemin bölgesi yarıçapı (metre) - Buton kilit açma eşiği
 const ARROW_SPACING_M          = 0.8;   // Ok arası mesafe (metre)
 const ARROW_CULL_DISTANCE_M    = 10;    // Frustum culling: bu mesafenin ötesi gizlenir (metre)
 const GROUND_ARROW_OFFSET      = 0.01;  // Z-fighting önleme boşluğu (metre)
@@ -536,9 +536,18 @@ function _drawArrows() {
         default:          _drawChevronArrows(leg.path);  break;
     }
 
-    // Son bacaksa hedef Map Pin ekle
-    if (AppState.legIdx === AppState.arLegs.length - 1) {
-        _placeMapPin(leg.path);
+    // Her bacakta zemin bölgesini çiz (kilit açma alanı)
+    const isLastLeg = (AppState.legIdx === AppState.arLegs.length - 1);
+    _placeGroundZone(leg.path, isLastLeg);
+
+    // Tabela (Destination Marker) ekleme mantığı
+    if (isLastLeg) {
+        _placeMapPin(leg.path, 'final');
+    } else {
+        const nextLeg = AppState.arLegs[AppState.legIdx + 1];
+        if (nextLeg && nextLeg.icon === 'arrow-up-down') {
+            _placeMapPin(leg.path, 'elevator');
+        }
     }
 
     AppState.tickRafId = requestAnimationFrame(_tick);
@@ -622,17 +631,39 @@ function _drawParticleArrows(path) {
     });
 }
 
-/* ── Hedef Marker: Google Maps Ground Ring + Floating Label ── */
-let _destinationLabelEl = null; // Floating label referansı (HUD'dan mesafe güncellemesi için)
+/* ── Hedef Marker: Google Maps Ground Ring + JPEG Floating Sign ── */
+let _destinationLabelEl = null; // Floating label referansı (Kullanılmıyor ama geriye dönük uyumluluk için null kalsın)
 
-function _placeMapPin(path) {
+const DESTINATION_SIGN_MAP = {
+    'noroloji':         'Assets/noroloji.jpeg',
+    'engelli-tuvaleti': 'Assets/tuvalet.jpeg',
+    'laboratuvar':      'Assets/laboratuvar.jpeg',
+    'danisma':          'Assets/danisma.jpeg'
+};
+
+function _placeGroundZone(path, isLast) {
+    if (!path || path.length === 0) return;
+    const lastRaw = _parsePos(path[path.length - 1]);
+    const color = isLast ? '#4285F4' : '#22C55E';
+    
+    const ring = document.createElement('a-ring');
+    ring.setAttribute('position', `${lastRaw.x} ${_groundY + 0.005} ${lastRaw.z}`);
+    ring.setAttribute('rotation', '-90 0 0');
+    ring.setAttribute('radius-inner', (GROUND_ZONE_RADIUS - 0.05).toString());
+    ring.setAttribute('radius-outer', GROUND_ZONE_RADIUS.toString());
+    ring.setAttribute('material', `color:${color}; shader:flat; transparent:true; opacity:0.6`);
+    ring.setAttribute('animation', 'property:scale; from:1 1 1; to:1.08 1.08 1; dur:2000; loop:true; dir:alternate; easing:easeInOutSine');
+    
+    // Not: _activeArrows listesine eklemiyoruz, böylece culling'den etkilenmez ve hep görünür
+    _dom.arrows.appendChild(ring);
+}
+
+function _placeMapPin(path, signType) {
     const lastRaw = _parsePos(path[path.length - 1]);
     const px = lastRaw.x, pz = lastRaw.z;
     const yBase = _groundY;
 
-    const RING_COLOR   = '#4285F4';
-    const LABEL_BG     = '#FFFFFF';
-    const LABEL_COLOR  = '#1C1C1E';
+    const RING_COLOR = '#4285F4';
 
     const pin = document.createElement('a-entity');
     pin.setAttribute('position', `${px} ${yBase} ${pz}`);
@@ -653,55 +684,60 @@ function _placeMapPin(path) {
     centerDot.setAttribute('position', '0 0.006 0');
     centerDot.setAttribute('material', `color:${RING_COLOR}; shader:flat; transparent:true; opacity:0.95`);
 
-    // --- Floating Label (hedef adı + mesafe) ---
-    const label = document.createElement('a-entity');
-    label.setAttribute('position', '0 0.70 0');
-    label.setAttribute('look-at-y', '');
-    label.setAttribute('animation', 'property:position; from:0 0.70 0; to:0 0.73 0; dur:2000; loop:true; dir:alternate; easing:easeInOutSine');
-
-    // Label arka plan (rounded rect) — A-Frame'de plane ile simüle
-    const labelBg = document.createElement('a-entity');
-    const routeName = AppState.activeRoute ? (AppState.activeRoute.shortName || AppState.activeRoute.name || 'Hedef') : 'Hedef';
-    // Metin uzunluğuna göre arka plan genişliğini hesapla
-    const textLen = routeName.length;
-    const bgWidth = Math.max(0.7, textLen * 0.055 + 0.35);
-    labelBg.setAttribute('geometry', `primitive: plane; width: ${bgWidth}; height: 0.22`);
-    labelBg.setAttribute('material', `color:${LABEL_BG}; shader:flat; transparent:true; opacity:0.92; side:double`);
-    labelBg.setAttribute('position', '0 0 0.001');
-
-    // Label metin (hedef adı)
-    const labelText = document.createElement('a-text');
-    labelText.setAttribute('value', routeName);
-    labelText.setAttribute('color', LABEL_COLOR);
-    labelText.setAttribute('align', 'center');
-    labelText.setAttribute('anchor', 'center');
-    labelText.setAttribute('width', '1.2');
-    labelText.setAttribute('font', 'roboto');
-    labelText.setAttribute('position', '0 0.025 0.002');
-
-    // Label alt metin (mesafe) — dinamik güncelleme için referans tutulur
-    const labelDist = document.createElement('a-text');
-    labelDist.setAttribute('value', '📍');
-    labelDist.setAttribute('color', '#6B7280');
-    labelDist.setAttribute('align', 'center');
-    labelDist.setAttribute('anchor', 'center');
-    labelDist.setAttribute('width', '0.8');
-    labelDist.setAttribute('font', 'roboto');
-    labelDist.setAttribute('position', '0 -0.040 0.002');
-    labelDist.className = 'dest-label-dist'; // CSS sınıfı ile tanımlama
-
-    label.appendChild(labelBg);
-    label.appendChild(labelText);
-    label.appendChild(labelDist);
-
     pin.appendChild(outerRing);
     pin.appendChild(centerDot);
-    pin.appendChild(label);
+
+    // --- JPEG Floating Sign ---
+    let signSrc = null;
+    if (signType === 'elevator') {
+        signSrc = 'Assets/Asansor.jpeg';
+    } else if (signType === 'final') {
+        const routeId = AppState.activeRoute ? AppState.activeRoute.id : null;
+        signSrc = DESTINATION_SIGN_MAP[routeId];
+    }
+
+    if (signSrc) {
+        const sign = document.createElement('a-image');
+        sign.setAttribute('src', signSrc);
+        sign.setAttribute('width', '0.90');
+        sign.setAttribute('height', '0.60');
+        sign.setAttribute('position', '0 0.70 0');
+        sign.setAttribute('look-at-y', '');
+        sign.setAttribute('animation', 'property:position; from:0 0.70 0; to:0 0.73 0; dur:2000; loop:true; dir:alternate; easing:easeInOutSine');
+        pin.appendChild(sign);
+    } else {
+        // Fallback: Eski metin label (eğer ID eşleşmezse)
+        const LABEL_BG = '#FFFFFF';
+        const LABEL_COLOR = '#1C1C1E';
+        const label = document.createElement('a-entity');
+        label.setAttribute('position', '0 0.70 0');
+        label.setAttribute('look-at-y', '');
+        label.setAttribute('animation', 'property:position; from:0 0.70 0; to:0 0.73 0; dur:2000; loop:true; dir:alternate; easing:easeInOutSine');
+
+        const labelBg = document.createElement('a-entity');
+        const routeName = AppState.activeRoute ? (AppState.activeRoute.shortName || AppState.activeRoute.name || 'Hedef') : 'Hedef';
+        const textLen = routeName.length;
+        const bgWidth = Math.max(0.7, textLen * 0.055 + 0.35);
+        labelBg.setAttribute('geometry', `primitive: plane; width: ${bgWidth}; height: 0.22`);
+        labelBg.setAttribute('material', `color:${LABEL_BG}; shader:flat; transparent:true; opacity:0.92; side:double`);
+        labelBg.setAttribute('position', '0 0 0.001');
+
+        const labelText = document.createElement('a-text');
+        labelText.setAttribute('value', routeName);
+        labelText.setAttribute('color', LABEL_COLOR);
+        labelText.setAttribute('align', 'center');
+        labelText.setAttribute('anchor', 'center');
+        labelText.setAttribute('width', '1.2');
+        labelText.setAttribute('font', 'roboto');
+        labelText.setAttribute('position', '0 0.002 0.002'); // Mesafe güncellemesi olmadığından ortaladık
+
+        label.appendChild(labelBg);
+        label.appendChild(labelText);
+        pin.appendChild(label);
+    }
 
     _dom.arrows.appendChild(pin);
-
-    // Floating label referansını sakla (tick döngüsünde mesafe güncellemesi için)
-    _destinationLabelEl = labelDist;
+    _destinationLabelEl = null; // Mesafe metni kaldırıldı, null atandı
 }
 
 /* ── Şerit Stili: Leading Arrow (şerit ucunda tek yön oku) ── */
@@ -936,7 +972,7 @@ function _tick(time) {
     _handleTurnWarning(distToTurn);
 
     if (!inGrace) {
-        _setArrivedBtnLocked(distToTurn > NEXT_SECTION_UNLOCK_DIST);
+        _setArrivedBtnLocked(distToTurn > GROUND_ZONE_RADIUS);
     }
 
     // Otomatik varış (son bacak)

@@ -64,16 +64,37 @@ const NAV_ROUTES = [
         desc: "B Blok, Zemin Kat — Oda 112",
         detail: "Nöroloji Polikliniği, beyin ve sinir sistemi hastalıklarının tanı ve tedavisi amacıyla hizmet vermektedir. Hastane ana girişinden başlar.",
 
+        /*
+        // Hastane Rotası (6 adım düz + 6 adım düz + sola dön 18 adım):
         legs: [
             {
                 type: "ar",
-                instruction: "Koridorda dümdüz 5.25 metre ilerleyin ⬆️",
-                path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
+                instruction: "Koridorda dümdüz 4.5 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -4.5" }]
+            },
+            {
+                type: "ar",
+                instruction: "Dümdüz 4.5 metre daha ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -4.5" }]
             },
             {
                 type: "ar",
                 instruction: "Sola dönüp 13.5 metre ilerleyin ⬅️",
                 path: [{ pos: "0 0 0" }, { pos: "0 0 -13.5" }]
+            }
+        ]
+        */
+        // Evde Test Rotası (3 adım düz + sola dön 3 adım düz):
+        legs: [
+            {
+                type: "ar",
+                instruction: "Dümdüz 2.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -2.25" }]
+            },
+            {
+                type: "ar",
+                instruction: "Sola dönüp 2.25 metre ilerleyin ⬅️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -2.25" }]
             }
         ]
     },

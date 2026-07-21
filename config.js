@@ -157,6 +157,8 @@ const NAV_ROUTES = [
         desc: "C Blok, Alt Zemin Kat (−1) — Asansörlü Erişim",
         detail: "Laboratuvar Birimi. Bu rota Engelli Erişim Tuvaleti'nden başlamaktadır. Erişim için asansör kullanılması gerekmektedir.",
 
+        /* 
+        // Orjinal Rota:
         legs: [
             {
                 type: "ar",
@@ -183,6 +185,31 @@ const NAV_ROUTES = [
                 type: "ar",
                 instruction: "Asansörden çıkıp düz 5.25 metre ilerleyin ⬆️",
                 path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
+            }
+        ]
+        */
+        // Asansör Test Rotası (Evde test için 3 adımlık kısa rota):
+        legs: [
+            {
+                type: "ar",
+                instruction: "Asansöre doğru 2.25 metre ilerleyin ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -2.25" }]
+            },
+            {
+                type: "info",
+                icon: "arrow-up-down",
+                title: "Asansöre Binin",
+                lines: [
+                    "Önünüzdeki asansöre girin.",
+                    "Panel üzerinden  −1  tuşuna basın.",
+                    "Kapı açılınca asansörden çıkıp düz ilerleyin.",
+                    "Hazır olduğunuzda aşağıdaki 'AR'yi Başlat' butonuna basın."
+                ]
+            },
+            {
+                type: "ar",
+                instruction: "Asansörden çıkıp laboratuvara ulaşın ⬆️",
+                path: [{ pos: "0 0 0" }, { pos: "0 0 -1.50" }]
             }
         ]
     },

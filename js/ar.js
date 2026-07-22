@@ -635,10 +635,10 @@ function _drawParticleArrows(path) {
 let _destinationLabelEl = null; // Floating label referansı (Kullanılmıyor ama geriye dönük uyumluluk için null kalsın)
 
 const DESTINATION_SIGN_MAP = {
-    'noroloji':         'Assets/noroloji.jpeg',
-    'engelli-tuvaleti': 'Assets/tuvalet.jpeg',
-    'laboratuvar':      'Assets/laboratuvar.jpeg',
-    'danisma':          'Assets/danisma.jpeg'
+    'noroloji':         'Assets/noroloji_yeni.png',
+    'engelli-tuvaleti': 'Assets/tuvalet_yeni.png',
+    'laboratuvar':      'Assets/laboratuvar_yeni.png',
+    'danisma':          'Assets/danisma_yeni.png'
 };
 
 function _placeGroundZone(path, isLast) {
@@ -690,7 +690,7 @@ function _placeMapPin(path, signType) {
     // --- JPEG Floating Sign ---
     let signSrc = null;
     if (signType === 'elevator') {
-        signSrc = 'Assets/Asansor.jpeg';
+        signSrc = 'Assets/asansor_yeni.png';
     } else if (signType === 'final') {
         const routeId = AppState.activeRoute ? AppState.activeRoute.id : null;
         signSrc = DESTINATION_SIGN_MAP[routeId];

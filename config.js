@@ -64,8 +64,7 @@ const NAV_ROUTES = [
         desc: "B Blok, Zemin Kat — Oda 112",
         detail: "Nöroloji Polikliniği, beyin ve sinir sistemi hastalıklarının tanı ve tedavisi amacıyla hizmet vermektedir. Hastane ana girişinden başlar.",
 
-        /*
-        // Hastane Rotası (6 adım düz + 6 adım düz + sola dön 18 adım):
+      
         legs: [
             {
                 type: "ar",
@@ -83,21 +82,7 @@ const NAV_ROUTES = [
                 path: [{ pos: "0 0 0" }, { pos: "0 0 -13.5" }]
             }
         ]
-        */
-        // Evde Test Rotası (3 adım düz + sola dön 3 adım düz):
-        legs: [
-            {
-                type: "ar",
-                instruction: "Dümdüz 2.25 metre ilerleyin ⬆️",
-                path: [{ pos: "0 0 0" }, { pos: "0 0 -2.25" }]
-            },
-            {
-                type: "ar",
-                instruction: "Sola dönüp 2.25 metre ilerleyin ⬅️",
-                path: [{ pos: "0 0 0" }, { pos: "0 0 -2.25" }]
-            }
-        ]
-    },
+     },
 
     /* ══════════════════════════════════════════════════════
        ROTA 2 — Engelli Erişim Tuvaleti (Nöroloji'den) |  AR Aktif
@@ -157,8 +142,7 @@ const NAV_ROUTES = [
         desc: "C Blok, Alt Zemin Kat (−1) — Asansörlü Erişim",
         detail: "Laboratuvar Birimi. Bu rota Engelli Erişim Tuvaleti'nden başlamaktadır. Erişim için asansör kullanılması gerekmektedir.",
 
-        /* 
-        // Orjinal Rota:
+       
         legs: [
             {
                 type: "ar",
@@ -185,31 +169,6 @@ const NAV_ROUTES = [
                 type: "ar",
                 instruction: "Asansörden çıkıp düz 5.25 metre ilerleyin ⬆️",
                 path: [{ pos: "0 0 0" }, { pos: "0 0 -5.25" }]
-            }
-        ]
-        */
-        // Asansör Test Rotası (Evde test için 3 adımlık kısa rota):
-        legs: [
-            {
-                type: "ar",
-                instruction: "Asansöre doğru 2.25 metre ilerleyin ⬆️",
-                path: [{ pos: "0 0 0" }, { pos: "0 0 -2.25" }]
-            },
-            {
-                type: "info",
-                icon: "arrow-up-down",
-                title: "Asansöre Binin",
-                lines: [
-                    "Önünüzdeki asansöre girin.",
-                    "Panel üzerinden  −1  tuşuna basın.",
-                    "Kapı açılınca asansörden çıkıp düz ilerleyin.",
-                    "Hazır olduğunuzda aşağıdaki butonuna basın."
-                ]
-            },
-            {
-                type: "ar",
-                instruction: "Asansörden çıkıp laboratuvara ulaşın ⬆️",
-                path: [{ pos: "0 0 0" }, { pos: "0 0 -1.50" }]
             }
         ]
     },

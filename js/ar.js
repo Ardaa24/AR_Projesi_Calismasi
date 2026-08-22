@@ -353,7 +353,10 @@ function _onExitAR() {
     _dom.bottomPanel.style.display = 'none';
     _dom.turnOverlay.classList.remove('visible');
     if (_dom.hudArrow)       _dom.hudArrow.style.display = 'none';
-    if (_dom.actionToast)    _dom.actionToast.classList.remove('visible');
+    if (_dom.actionToast) {
+        _dom.actionToast.classList.remove('visible');
+        _dom.actionToast.classList.remove('toast-noroloji');
+    }
     if (_dom.mappingOverlay) _dom.mappingOverlay.classList.remove('visible');
     _dom.arrows.innerHTML = '';
     _dom.scene.classList.remove('ar-active');
@@ -468,10 +471,19 @@ function _setArrivedBtnLocked(locked) {
     arrivedBtn.classList.add('btn-glow');
 
     if (actionToast) {
+        const isNoroloji = AppState.activeRoute && AppState.activeRoute.id === 'noroloji';
         const isLast = AppState.legIdx === AppState.arLegs.length - 1;
-        const msg = isLast
-            ? 'Hedefe ulaştınız, Sonraki Bölüm butonuna basın'
-            : 'Sonraki Bölüm butonuna basın';
+
+        let msg;
+        if (isNoroloji) {
+            actionToast.classList.add('toast-noroloji');
+            msg = 'Sonraki Bölüm';
+        } else {
+            actionToast.classList.remove('toast-noroloji');
+            msg = isLast
+                ? 'Hedefe ulaştınız, Sonraki Bölüm butonuna basın'
+                : 'Sonraki Bölüm butonuna basın';
+        }
 
         actionToast.innerHTML = `<i data-lucide="check-circle" width="18" height="18" style="vertical-align:middle;margin-right:8px;display:inline-block"></i><span style="vertical-align:middle">${msg}</span>`;
         if (window.lucide) lucide.createIcons({ root: actionToast });

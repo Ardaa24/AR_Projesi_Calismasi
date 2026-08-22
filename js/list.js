@@ -92,6 +92,8 @@ function renderList(filter = '') {
         const routes = NAV_ROUTES.filter(r => _matchesQuery(r, cat, filter));
         if (!routes.length) return;
 
+        routes.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+
         totalVisible += routes.length;
         listEl.appendChild(_createCategoryLabel(cat));
         routes.forEach(route => listEl.appendChild(_createRouteCard(route)));
